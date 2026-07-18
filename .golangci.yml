@@ -1,0 +1,43 @@
+version: "2"
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - revive
+    - ineffassign
+    - unconvert
+    - misspell
+  settings:
+    revive:
+      # Curated rule set. The `exported` rule (doc-comment + stutter checks) and
+      # `redefines-builtin-id` are intentionally omitted: DiffOp/DiffTag are the
+      # spec-mandated public names, and old/new are the domain vocabulary that
+      # shadows the builtin `new`.
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: if-return
+        - name: increment-decrement
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: var-naming
+
+formatters:
+  enable:
+    - gofumpt
