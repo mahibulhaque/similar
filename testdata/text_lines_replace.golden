@@ -1,0 +1,26 @@
+[
+  {
+    "tag": "equal",
+    "old_index": 0,
+    "new_index": 0,
+    "value": "Hello World\n"
+  },
+  {
+    "tag": "delete",
+    "old_index": 1,
+    "new_index": null,
+    "value": "some stuff here\n"
+  },
+  {
+    "tag": "insert",
+    "old_index": null,
+    "new_index": 1,
+    "value": "some amazing stuff here\n"
+  },
+  {
+    "tag": "equal",
+    "old_index": 2,
+    "new_index": 2,
+    "value": "some more stuff here\n"
+  }
+]
