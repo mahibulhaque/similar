@@ -8,24 +8,15 @@ import (
 	"github.com/mahibulhaque/similar/internal/diff"
 )
 
-// Algorithm selects the diff algorithm. In v0.1.0 the only value is Myers; the
+// Algorithm selects the diff algorithm. In v0.x the only value is Myers; the
 // type exists so call sites stay stable as more algorithms ship.
-type Algorithm int
+//
+// It is an alias for the type in internal/algorithms so that the text layer can
+// reference the same type without an import cycle.
+type Algorithm = algorithms.Algorithm
 
-const (
-	// Myers is Eugene W. Myers' shortest-edit-script algorithm.
-	Myers Algorithm = iota
-)
-
-// String returns the algorithm's name.
-func (a Algorithm) String() string {
-	switch a {
-	case Myers:
-		return "myers"
-	default:
-		return fmt.Sprintf("Algorithm(%d)", int(a))
-	}
-}
+// Myers is Eugene W. Myers' shortest-edit-script algorithm.
+const Myers = algorithms.Myers
 
 // Diff computes the diff between old and new using Myers' algorithm and returns
 // all operations. It never expires (background context) and so always produces
