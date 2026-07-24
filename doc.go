@@ -39,4 +39,21 @@
 // produced, avoiding a materialized slice. Embed [NoopHook] to override only
 // the callbacks you care about, and wrap a hook in [ReplaceHook] to coalesce
 // adjacent delete+insert into replace operations.
+//
+// # Text diffing
+//
+// For text, the higher-level [TextDiff] tokenizes two strings by line, word, or
+// character and exposes the result as tagged [Change] values:
+//
+//	diff := similar.DiffLines("a\nb\nc", "a\nb\nC")
+//	for c := range diff.AllChanges() {
+//		fmt.Printf("%s%s", c.Tag(), c)
+//	}
+//
+// AllChanges and Changes return an iter.Seq[Change] so changes stream lazily and
+// early-exit cheaply on large inputs; use slices.Collect to gather them. A
+// TextDiff also reports a similarity [TextDiff.Ratio], its raw [TextDiff.Ops],
+// and [TextDiff.GroupedOps] clusters. [NewTextDiffRemapper] maps word or
+// character diffs back onto connected runs of the original strings, and
+// [GetCloseMatches] finds the closest matches to a word from a candidate list.
 package similar
