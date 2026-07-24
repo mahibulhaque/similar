@@ -61,7 +61,7 @@ func GroupDiffOps(ops []DiffOp, n int) [][]DiffOp {
 	}
 
 	// Drop a trailing group that carries no change (empty or a lone equal run).
-	if !(len(pending) == 0 || (len(pending) == 1 && pending[0].Tag == Equal)) {
+	if len(pending) != 0 && (len(pending) != 1 || pending[0].Tag != Equal) {
 		rv = append(rv, pending)
 	}
 	return rv
