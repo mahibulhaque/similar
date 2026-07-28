@@ -22,3 +22,15 @@ func (a Algorithm) String() string {
 		return fmt.Sprintf("Algorithm(%d)", int(a))
 	}
 }
+
+// Valid reports whether a names an algorithm this release implements. It is the
+// single source of truth consulted both by the entry points that return an
+// error on a bad value and by those that must reject it at construction time.
+func (a Algorithm) Valid() bool {
+	switch a {
+	case Myers:
+		return true
+	default:
+		return false
+	}
+}

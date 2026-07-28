@@ -33,6 +33,13 @@
 // A deadline hit yields a valid but possibly approximate script; it is not an
 // error. The no-deadline path always produces the exact minimal script.
 //
+// # Algorithm selection
+//
+// [Algorithm] selects the implementation; Myers is the only value in this
+// release. Every entry point routes through one dispatch point, so an unknown
+// value is rejected consistently: the functions that return an error report it
+// there, while [CaptureDiff] and [WithAlgorithm], which cannot, panic.
+//
 // # Streaming with a hook
 //
 // Advanced users can implement [DiffHook] and receive callbacks as the diff is

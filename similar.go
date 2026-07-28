@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mahibulhaque/similar/internal/algorithms"
-	"github.com/mahibulhaque/similar/internal/diff"
+	"github.com/mahibulhaque/similar/internal/engine"
 )
 
 // Algorithm selects the diff algorithm. In v0.x the only value is Myers; the
@@ -28,27 +28,35 @@ func Diff[T comparable](old, new []T) []DiffOp {
 
 // CaptureDiff computes the diff with the given algorithm and returns all
 // operations, using a background context (no deadline).
+//
+// It panics if alg names no known algorithm: the signature has no error to
+// return, and a bad Algorithm value is a programming error rather than a
+// runtime condition. Use DiffDeadline to receive that as an error instead.
 func CaptureDiff[T comparable](alg Algorithm, old, new []T) []DiffOp {
+	mustBeKnown(alg)
 	ops, _ := DiffDeadline(context.Background(), alg, old, new)
 	return ops
+}
+
+// mustBeKnown panics unless alg names an algorithm this release implements. It
+// guards the entry points that cannot report the failure as an error.
+func mustBeKnown(alg Algorithm) {
+	if !alg.Valid() {
+		panic(fmt.Sprintf("similar: unknown algorithm %d", int(alg)))
+	}
 }
 
 // DiffDeadline computes the diff honoring ctx's deadline and cancellation. If
 // the deadline is hit the returned script is valid but may be approximate; the
 // error is non-nil only if the algorithm or a hook fails.
 func DiffDeadline[T comparable](ctx context.Context, alg Algorithm, old, new []T) ([]DiffOp, error) {
-	capture := diff.NewCapture()
-	hook := diff.NewCompact[T](diff.NewReplace(capture), old, new)
-	if err := runHook(ctx, alg, hook, old, 0, len(old), new, 0, len(new)); err != nil {
-		return nil, err
-	}
-	return capture.Ops(), nil
+	return engine.Capture(ctx, alg, old, new)
 }
 
 // DiffHookDeadline streams operations to a custom DiffHook instead of
 // collecting them, honoring ctx's deadline and cancellation.
 func DiffHookDeadline[T comparable](ctx context.Context, alg Algorithm, hook DiffHook, old, new []T) error {
-	return runHook(ctx, alg, hook, old, 0, len(old), new, 0, len(new))
+	return engine.Run(ctx, alg, hook, old, 0, len(old), new, 0, len(new))
 }
 
 // DiffRangeHookDeadline is like DiffHookDeadline but diffs sub-ranges of old
@@ -60,20 +68,5 @@ func DiffRangeHookDeadline[T comparable](
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 ) error {
-	return runHook(ctx, alg, hook, old, oldStart, oldEnd, new, newStart, newEnd)
-}
-
-func runHook[T comparable](
-	ctx context.Context,
-	alg Algorithm,
-	hook diff.DiffHook,
-	old []T, oldStart, oldEnd int,
-	new []T, newStart, newEnd int,
-) error {
-	switch alg {
-	case Myers:
-		return algorithms.DiffDeadline(ctx, hook, old, oldStart, oldEnd, new, newStart, newEnd)
-	default:
-		return fmt.Errorf("similar: unknown algorithm %d", int(alg))
-	}
+	return engine.Run(ctx, alg, hook, old, oldStart, oldEnd, new, newStart, newEnd)
 }

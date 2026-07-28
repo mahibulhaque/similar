@@ -2,6 +2,7 @@ package text
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mahibulhaque/similar/internal/algorithms"
 )
@@ -26,7 +27,14 @@ func WithContext(ctx context.Context) Option {
 
 // WithAlgorithm selects the diff algorithm. The default (and only value in this
 // release) is Myers.
+//
+// It panics if alg names no known algorithm. The diff constructors return a
+// *TextDiff with no error, so an unusable value has to be rejected here, where
+// the caller can see which argument was wrong.
 func WithAlgorithm(alg algorithms.Algorithm) Option {
+	if !alg.Valid() {
+		panic(fmt.Sprintf("text: unknown algorithm %d", int(alg)))
+	}
 	return func(c *config) { c.algorithm = alg }
 }
 

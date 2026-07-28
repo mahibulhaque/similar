@@ -5,6 +5,7 @@ import (
 
 	"github.com/mahibulhaque/similar/internal/algorithms"
 	"github.com/mahibulhaque/similar/internal/diff"
+	"github.com/mahibulhaque/similar/internal/engine"
 )
 
 // TextDiff is a captured text diff: the tokenized old and new sides plus the
@@ -47,25 +48,20 @@ func build(oldToks, newToks []string, newlineDefault bool, opts []Option) *TextD
 	if c.newlineTerminated != nil {
 		newline = *c.newlineTerminated
 	}
+	// WithAlgorithm rejects an unknown value when the option is applied, and the
+	// standard hook stack never fails, so Capture cannot error here.
+	ops, err := engine.Capture(c.ctx, c.algorithm, oldToks, newToks)
+	if err != nil {
+		panic("text: " + err.Error())
+	}
+
 	return &TextDiff{
 		old:               oldToks,
 		new:               newToks,
-		ops:               captureOps(c, oldToks, newToks),
+		ops:               ops,
 		newlineTerminated: newline,
 		algorithm:         c.algorithm,
 	}
-}
-
-// captureOps runs the algorithm over the tokens through the
-// Compact(Replace(Capture)) hook stack, matching the crate's
-// capture_diff_deadline. The only algorithm in this release is Myers; the hook
-// stack never errors, so a returned error (only possible from a failing hook)
-// is not expected here.
-func captureOps(c config, old, new []string) []diff.DiffOp {
-	capture := diff.NewCapture()
-	hook := diff.NewCompact[string](diff.NewReplace(capture), old, new)
-	_ = algorithms.DiffDeadline(c.ctx, hook, old, 0, len(old), new, 0, len(new))
-	return capture.Ops()
 }
 
 // Algorithm returns the algorithm that produced the diff.
