@@ -122,6 +122,10 @@ existing flat facade (everything under package `similar`) is preserved.
   variant), `SliceOld(start,end)`/`SliceNew(start,end)`, `IterSlices(op) []RemappedChange`
   where `RemappedChange{Tag ChangeTag; Value string}`. Runs are computed by cumulative
   byte offsets into the original string.
+  <br>**Superseded as shipped:** remapping lives on `TextDiff` itself
+  (`SliceOld`/`SliceNew`/`RemappedChanges`/`AllRemappedChanges`), which reconstructs its
+  source text from its own tokens. The separate type required the caller to re-supply the
+  two strings, and a mismatch was unchecked. `RemappedChange` is unchanged.
 - **`GetCloseMatches(word string, possibilities []string, n int, cutoff float64) []string`.**
 - **Also re-exported:** `GroupDiffOps`, `DiffRatio`.
 

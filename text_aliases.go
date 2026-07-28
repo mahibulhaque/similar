@@ -20,9 +20,8 @@ type (
 	ChangeTag = diff.ChangeTag
 	// Option configures a TextDiff construction.
 	Option = text.Option
-	// TextDiffRemapper maps token-level ops back onto the original strings.
-	TextDiffRemapper = text.TextDiffRemapper
-	// RemappedChange is a tagged run of the original text.
+	// RemappedChange is a tagged run of the original text, as produced by
+	// [TextDiff.RemappedChanges].
 	RemappedChange = text.RemappedChange
 )
 
@@ -61,16 +60,6 @@ func WithAlgorithm(alg Algorithm) Option { return text.WithAlgorithm(alg) }
 
 // WithNewlineTerminated forces the newline-terminated flag.
 func WithNewlineTerminated(yes bool) Option { return text.WithNewlineTerminated(yes) }
-
-// NewTextDiffRemapper builds a remapper from a diff and its original strings.
-func NewTextDiffRemapper(d *TextDiff, old, new string) *TextDiffRemapper {
-	return text.NewTextDiffRemapper(d, old, new)
-}
-
-// NewTextDiffRemapperFromTokens builds a remapper from token slices and strings.
-func NewTextDiffRemapperFromTokens(oldTokens, newTokens []string, old, new string) *TextDiffRemapper {
-	return text.NewTextDiffRemapperFromTokens(oldTokens, newTokens, old, new)
-}
 
 // GetCloseMatches returns up to n possibilities most similar to word.
 func GetCloseMatches(word string, possibilities []string, n int, cutoff float64) []string {

@@ -38,15 +38,10 @@ func ExampleTextDiff_Ratio() {
 	// Output: 0.75
 }
 
-func ExampleTextDiffRemapper() {
-	old := "foo bar baz"
-	new := "foo bor baz"
-	diff := similar.DiffWords(old, new)
-	rm := similar.NewTextDiffRemapper(diff, old, new)
-	for _, op := range diff.Ops() {
-		for _, s := range rm.IterSlices(op) {
-			fmt.Printf("%s%q\n", s.Tag, s.Value)
-		}
+func ExampleTextDiff_AllRemappedChanges() {
+	diff := similar.DiffWords("foo bar baz", "foo bor baz")
+	for s := range diff.AllRemappedChanges() {
+		fmt.Printf("%s%q\n", s.Tag, s.Value)
 	}
 	// Output:
 	//  "foo "

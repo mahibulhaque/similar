@@ -14,8 +14,8 @@ Myers' diff algorithm: a minimal edit script between two slices of any
 - **Streaming or slice.** Collect a `[]DiffOp`, or implement a `DiffHook` and
   receive callbacks as the diff is produced.
 - **Text diffing.** `TextDiff` splits strings by line, word, or character and
-  yields tagged `Change`s, a similarity ratio, grouped ops, a remapper onto the
-  original strings, and difflib-style `GetCloseMatches`.
+  yields tagged `Change`s, a similarity ratio, grouped ops, remapping onto
+  connected runs of the original strings, and difflib-style `GetCloseMatches`.
 - **Standard library only.** A clean leaf dependency.
 
 ## Install
@@ -85,19 +85,18 @@ fmt.Println(diff.Ratio()) // similarity in [0,1]
 `AllChanges` and `Changes` return an `iter.Seq[Change]`, so changes stream
 lazily and `break` early on large inputs; use `slices.Collect` for a slice.
 
-Map a word or character diff back onto connected runs of the original strings
-with a remapper:
+Map a word or character diff back onto connected runs of the original strings.
+A `TextDiff` knows its own source text, so you don't pass the strings again:
 
 ```go
-old, new := "foo bar baz", "foo bor baz"
-diff := similar.DiffWords(old, new)
-rm := similar.NewTextDiffRemapper(diff, old, new)
-for _, op := range diff.Ops() {
-    for _, s := range rm.IterSlices(op) {
-        fmt.Printf("%s%q\n", s.Tag, s.Value) // " \"foo \"", "-\"bar\"", "+\"bor\"", " \" baz\""
-    }
+diff := similar.DiffWords("foo bar baz", "foo bor baz")
+for s := range diff.AllRemappedChanges() {
+    fmt.Printf("%s%q\n", s.Tag, s.Value) // " \"foo \"", "-\"bar\"", "+\"bor\"", " \" baz\""
 }
 ```
+
+`RemappedChanges(op)` does one op at a time, and `SliceOld`/`SliceNew` extract an
+arbitrary token range as a substring.
 
 Find the closest matches to a word (difflib-style):
 
