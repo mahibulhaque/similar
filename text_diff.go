@@ -3,8 +3,6 @@ package similar
 import (
 	"iter"
 	"sync"
-
-	"github.com/mahibulhaque/similar/internal/engine"
 )
 
 // TextDiff is a captured text diff: the tokenized old and new sides plus the
@@ -75,7 +73,7 @@ func build(oldToks, newToks []string, newlineDefault bool, opts []Option) *TextD
 	}
 	// WithAlgorithm rejects an unknown value when the option is applied, and the
 	// standard hook stack never fails, so Capture cannot error here.
-	ops, err := engine.Capture(c.ctx, c.algorithm, oldToks, newToks)
+	ops, err := captureOps(c.ctx, c.algorithm, oldToks, newToks)
 	if err != nil {
 		panic("text: " + err.Error())
 	}

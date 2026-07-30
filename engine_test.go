@@ -1,4 +1,4 @@
-package engine
+package similar
 
 import (
 	"context"
@@ -6,48 +6,45 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/mahibulhaque/similar/internal/algorithms"
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
-const unknownAlg = algorithms.Algorithm(99)
+const unknownAlg = Algorithm(99)
 
-func TestCaptureRunsStandardHookStack(t *testing.T) {
+func TestCaptureOpsRunsStandardHookStack(t *testing.T) {
 	old := []string{"a", "b", "c", "d"}
 	new := []string{"a", "x", "y", "d"}
 
-	ops, err := Capture(context.Background(), algorithms.Myers, old, new)
+	ops, err := captureOps(context.Background(), Myers, old, new)
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
 	}
 
 	// Replace is only produced by the Replace hook, so seeing one here proves
 	// the delete+insert pair was coalesced rather than passed straight through.
-	want := []diff.DiffOp{
-		{Tag: diff.Equal, OldIndex: 0, NewIndex: 0, OldLen: 1, NewLen: 1},
-		{Tag: diff.Replace, OldIndex: 1, NewIndex: 1, OldLen: 2, NewLen: 2},
-		{Tag: diff.Equal, OldIndex: 3, NewIndex: 3, OldLen: 1, NewLen: 1},
+	want := []DiffOp{
+		{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 1, NewLen: 1},
+		{Tag: Replace, OldIndex: 1, NewIndex: 1, OldLen: 2, NewLen: 2},
+		{Tag: Equal, OldIndex: 3, NewIndex: 3, OldLen: 1, NewLen: 1},
 	}
 	if !reflect.DeepEqual(ops, want) {
 		t.Fatalf("ops = %v, want %v", ops, want)
 	}
 }
 
-func TestCaptureIdenticalSequences(t *testing.T) {
+func TestCaptureOpsIdenticalSequences(t *testing.T) {
 	s := []int{1, 2, 3}
-	ops, err := Capture(context.Background(), algorithms.Myers, s, s)
+	ops, err := captureOps(context.Background(), Myers, s, s)
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
 	}
-	want := []diff.DiffOp{{Tag: diff.Equal, OldIndex: 0, NewIndex: 0, OldLen: 3, NewLen: 3}}
+	want := []DiffOp{{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 3, NewLen: 3}}
 	if !reflect.DeepEqual(ops, want) {
 		t.Fatalf("ops = %v, want %v", ops, want)
 	}
 }
 
-func TestCaptureEmptyInputs(t *testing.T) {
-	ops, err := Capture(context.Background(), algorithms.Myers, []int{}, []int{})
+func TestCaptureOpsEmptyInputs(t *testing.T) {
+	ops, err := captureOps(context.Background(), Myers, []int{}, []int{})
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
 	}
@@ -56,8 +53,8 @@ func TestCaptureEmptyInputs(t *testing.T) {
 	}
 }
 
-func TestCaptureUnknownAlgorithm(t *testing.T) {
-	ops, err := Capture(context.Background(), unknownAlg, []int{1}, []int{2})
+func TestCaptureOpsUnknownAlgorithm(t *testing.T) {
+	ops, err := captureOps(context.Background(), unknownAlg, []int{1}, []int{2})
 	if err == nil {
 		t.Fatal("Capture with unknown algorithm: want error, got nil")
 	}
@@ -69,22 +66,22 @@ func TestCaptureUnknownAlgorithm(t *testing.T) {
 	}
 }
 
-func TestRunUnknownAlgorithm(t *testing.T) {
-	err := Run(context.Background(), unknownAlg, diff.NewCapture(), []int{1}, 0, 1, []int{2}, 0, 1)
+func TestRunDispatchUnknownAlgorithm(t *testing.T) {
+	err := run(context.Background(), unknownAlg, NewCapture(), []int{1}, 0, 1, []int{2}, 0, 1)
 	if err == nil {
 		t.Fatal("Run with unknown algorithm: want error, got nil")
 	}
 }
 
-func TestRunDiffsSubRanges(t *testing.T) {
+func TestRunDispatchDiffsSubRanges(t *testing.T) {
 	old := []int{9, 1, 2, 3, 9}
 	new := []int{8, 1, 2, 3, 8}
 
-	capture := diff.NewCapture()
-	if err := Run(context.Background(), algorithms.Myers, capture, old, 1, 4, new, 1, 4); err != nil {
+	capture := NewCapture()
+	if err := run(context.Background(), Myers, capture, old, 1, 4, new, 1, 4); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	want := []diff.DiffOp{{Tag: diff.Equal, OldIndex: 1, NewIndex: 1, OldLen: 3, NewLen: 3}}
+	want := []DiffOp{{Tag: Equal, OldIndex: 1, NewIndex: 1, OldLen: 3, NewLen: 3}}
 	if !reflect.DeepEqual(capture.Ops(), want) {
 		t.Fatalf("ops = %v, want %v", capture.Ops(), want)
 	}
@@ -93,22 +90,22 @@ func TestRunDiffsSubRanges(t *testing.T) {
 // failingHook fails on its first Equal callback, standing in for any hook whose
 // callback errors mid-diff.
 type failingHook struct {
-	diff.NoopHook
+	NoopHook
 	err error
 }
 
 func (h *failingHook) Equal(oldIndex, newIndex, length int) error { return h.err }
 
-func TestRunPropagatesHookError(t *testing.T) {
+func TestRunDispatchPropagatesHookError(t *testing.T) {
 	boom := errors.New("boom")
-	err := Run(context.Background(), algorithms.Myers, &failingHook{err: boom},
+	err := run(context.Background(), Myers, &failingHook{err: boom},
 		[]int{1, 2}, 0, 2, []int{1, 2}, 0, 2)
 	if !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want %v", err, boom)
 	}
 }
 
-func TestCaptureCancelledContextIsNotAnError(t *testing.T) {
+func TestCaptureOpsCancelledContextIsNotAnError(t *testing.T) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer cancel()
 
@@ -120,7 +117,7 @@ func TestCaptureCancelledContextIsNotAnError(t *testing.T) {
 	}
 
 	// An expired deadline yields an approximate but valid script, not an error.
-	ops, err := Capture(ctx, algorithms.Myers, old, new)
+	ops, err := captureOps(ctx, Myers, old, new)
 	if err != nil {
 		t.Fatalf("Capture with expired deadline: %v", err)
 	}
