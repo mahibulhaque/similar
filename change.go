@@ -79,8 +79,11 @@ func (t *ChangeTag) UnmarshalJSON(data []byte) error {
 //
 // A ChangeDelete has an old index but no new index; a ChangeInsert has a new
 // index but no old index; a ChangeEqual has both. Which indices are present
-// follows from the tag, so a Change is built with one constructor per tag and
-// absent indices are read back through the comma-ok accessors OldIndex/NewIndex.
+// follows from the tag, so absent indices are read back through the comma-ok
+// accessors [Change.OldIndex] and [Change.NewIndex].
+//
+// Changes are produced by a text diff, not constructed directly: see
+// [TextDiff.AllChanges] and [TextDiff.Changes].
 type Change struct {
 	tag         ChangeTag
 	oldIndex    int

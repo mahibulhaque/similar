@@ -31,7 +31,7 @@ type DiffHook interface {
 //
 // Embed it to implement only the callbacks you care about:
 //
-//	type onlyEqual struct{ diff.NoopHook }
+//	type onlyEqual struct{ similar.NoopHook }
 //	func (h *onlyEqual) Equal(o, n, l int) error { /* ... */ return nil }
 type NoopHook struct{}
 

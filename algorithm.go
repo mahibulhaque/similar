@@ -1,11 +1,13 @@
-package algorithms
+package similar
 
 import "fmt"
 
 // Algorithm selects the diff algorithm. In v0.x the only value is Myers; the
-// type exists so call sites stay stable as more algorithms ship. It lives in
-// this leaf package so both the public facade and the text layer can reference
-// it without an import cycle.
+// type exists so call sites stay stable as more algorithms ship.
+//
+// engine.go holds the single switch that turns a value of this type into an
+// implementation, so adding an algorithm means adding a constant here and a case
+// there.
 type Algorithm int
 
 const (

@@ -3,19 +3,7 @@ package similar
 import (
 	"context"
 	"fmt"
-
-	"github.com/mahibulhaque/similar/internal/algorithms"
 )
-
-// Algorithm selects the diff algorithm. In v0.x the only value is Myers; the
-// type exists so call sites stay stable as more algorithms ship.
-//
-// It is an alias for the type in internal/algorithms so that the text layer can
-// reference the same type without an import cycle.
-type Algorithm = algorithms.Algorithm
-
-// Myers is Eugene W. Myers' shortest-edit-script algorithm.
-const Myers = algorithms.Myers
 
 // Diff computes the diff between old and new using Myers' algorithm and returns
 // all operations. It never expires (background context) and so always produces

@@ -4,13 +4,15 @@ const ChangeInsert ChangeTag = iota + 2
 const Delete DiffTag = iota + 1
 const Equal DiffTag = iota
 const Insert DiffTag = iota + 2
-const Myers = algorithms.Myers
+const Myers Algorithm = iota
 const Replace DiffTag = iota + 3
 func (NoopHook) Delete(oldIndex, oldLen, newIndex int) error
 func (NoopHook) Equal(oldIndex, newIndex, length int) error
 func (NoopHook) Finish() error
 func (NoopHook) Insert(oldIndex, newIndex, newLen int) error
 func (NoopHook) Replace(oldIndex, oldLen, newIndex, newLen int) error
+func (a Algorithm) String() string
+func (a Algorithm) Valid() bool
 func (c *Capture) Delete(oldIndex, oldLen, newIndex int) error
 func (c *Capture) Equal(oldIndex, newIndex, length int) error
 func (c *Capture) Finish() error
@@ -76,7 +78,7 @@ func NewReplaceHook(d DiffHook) *ReplaceHook
 func WithAlgorithm(alg Algorithm) Option
 func WithContext(ctx context.Context) Option
 func WithNewlineTerminated(yes bool) Option
-type Algorithm = algorithms.Algorithm
+type Algorithm int
 type Capture struct { // contains filtered or unexported fields }
 type Change struct { // contains filtered or unexported fields }
 type ChangeTag int
