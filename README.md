@@ -72,7 +72,8 @@ Wrap a hook in `NewReplaceHook` to coalesce adjacent delete+insert into
 
 ### Text diffing
 
-Diff two strings by line, word, or character and walk the tagged changes:
+Diff two strings by line, word, or character — or by a tokenizer of your own —
+and walk the tagged changes:
 
 ```go
 diff := similar.DiffLines("a\nb\nc", "a\nb\nC")
@@ -97,6 +98,29 @@ for s := range diff.AllRemappedChanges() {
 
 `RemappedChanges(op)` does one op at a time, and `SliceOld`/`SliceNew` extract an
 arbitrary token range as a substring.
+
+`DiffLines`/`DiffWords`/`DiffChars` are conveniences over `DiffText`, which takes
+the tokenizer as an argument — `similar.Lines`, `similar.Words`, `similar.Chars`,
+or `similar.LinesAndNewlines` (line terminators as tokens of their own):
+
+```go
+diff := similar.DiffText("a\nb", "a\n\nb", similar.LinesAndNewlines)
+```
+
+Implement `Tokenizer` to split by a rule the package doesn't ship. `Split` should
+account for every byte of its input, since the remapping methods rebuild the
+source text by joining tokens:
+
+```go
+type commaTokenizer struct{}
+
+func (commaTokenizer) Split(s string) []string { /* "a", ",", "b" */ }
+func (commaTokenizer) NewlineTerminated() bool { return false }
+
+diff := similar.DiffText("a,b,c", "a,B,c", commaTokenizer{})
+```
+
+`DiffSlices` remains the entry point for input you tokenized yourself.
 
 Find the closest matches to a word (difflib-style):
 

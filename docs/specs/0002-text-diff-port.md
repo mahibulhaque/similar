@@ -101,6 +101,10 @@ existing flat facade (everything under package `similar`) is preserved.
 - **Rich constructors** (short verbs → `*TextDiff`): `DiffLines`, `DiffWords`,
   `DiffChars`, `DiffSlices`, each `(old, new, opts ...Option)`. No flat one-liner
   shortcuts this release (they are a non-breaking future addition).
+  <br>**Amended as shipped:** the general form is `DiffText(old, new string, tok
+  Tokenizer, opts ...Option)`, and `DiffLines`/`DiffWords`/`DiffChars` are one-line
+  conveniences over it. `DiffSlices` is unchanged and remains the adapter for
+  pre-tokenized input. See "Tokenizers" under Behavioral fidelity.
 - **Options** (functional): `WithContext(context.Context)`, `WithAlgorithm(Algorithm)`,
   `WithNewlineTerminated(bool)`. Deadlines/cancellation ride the `context.Context`,
   consistent with the existing facade; `newline_terminated` is tri-state (auto unless
@@ -142,6 +146,21 @@ existing flat facade (everything under package `similar`) is preserved.
   behavior: lines keep attached newlines and handle `\r`, `\n`, `\r\n`; a
   lines-and-newlines variant separates newline runs; words alternate whitespace-run /
   non-whitespace-run; chars are rune-boundary substrings.
+  <br>**Amended as shipped:** the four are public values behind a `Tokenizer` interface
+  (`Split(string) []string`, `NewlineTerminated() bool`) — `Lines`, `Words`, `Chars`,
+  `LinesAndNewlines` — reached through `DiffText`. Two reasons. First, the
+  lines-and-newlines variant this spec requires had no exported path at all: it was
+  implemented and unit-tested but unreachable, because every tokenizer was hard-wired
+  into its own constructor. Second, the newline-terminated default is a property of the
+  tokenizer (true for lines only), and as a positional `bool` on the internal builder it
+  travelled separately from the thing that decides it.
+  <br>**Deviation from the crate, taken deliberately:** Rust exposes no user-suppliable
+  tokenizer, and spec 0001 says the public API is a facade only. Accepting a caller's
+  `Tokenizer` adds a capability upstream lacks. It is admitted here because tokenizing is
+  a genuine variation point with four in-tree implementations — unlike `Algorithm`, which
+  stays a closed enum with one value — and because it makes rules this port explicitly
+  put out of scope (Unicode words, graphemes) implementable by the caller without a
+  segmentation dependency in this module.
 - **Change expansion** ports `TextChangesIter`: `Equal`/`Delete`/`Insert` map directly;
   `Replace` emits all deletes then all inserts, resolving old/new indices identically.
   Out-of-bounds op indices panic (faithful to Rust's `expect`).

@@ -42,6 +42,14 @@ func TestTextGolden(t *testing.T) {
 				return slices.Collect(similar.DiffChars(old, new).AllChanges())
 			},
 		},
+		{
+			name: "lines_and_newlines_replace",
+			old:  "Hello World\nsome stuff here\n\nsome more stuff here\n",
+			new:  "Hello World\n\nsome amazing stuff here\nsome more stuff here\n",
+			changes: func(old, new string) []similar.Change {
+				return slices.Collect(similar.DiffText(old, new, similar.LinesAndNewlines).AllChanges())
+			},
+		},
 	}
 	for _, fx := range fixtures {
 		t.Run(fx.name, func(t *testing.T) {
