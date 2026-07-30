@@ -1,0 +1,43 @@
+const ChangeDelete = diff.ChangeDelete
+const ChangeEqual = diff.ChangeEqual
+const ChangeInsert = diff.ChangeInsert
+const Delete = diff.Delete
+const Equal = diff.Equal
+const Insert = diff.Insert
+const Myers = algorithms.Myers
+const Replace = diff.Replace
+func CaptureDiff[T comparable](alg Algorithm, old, new []T) []DiffOp
+func DiffChars(old, new string, opts ...Option) *TextDiff
+func DiffDeadline[T comparable](ctx context.Context, alg Algorithm, old, new []T) ([]DiffOp, error)
+func DiffHookDeadline[T comparable](ctx context.Context, alg Algorithm, hook DiffHook, old, new []T) error
+func DiffLines(old, new string, opts ...Option) *TextDiff
+func DiffRangeHookDeadline[T comparable](ctx context.Context, alg Algorithm, hook DiffHook, old []T, oldStart, oldEnd int, new []T, newStart, newEnd int) error
+func DiffRatio(ops []DiffOp, oldLen, newLen int) float64
+func DiffSlices(old, new []string, opts ...Option) *TextDiff
+func DiffText(old, new string, tok Tokenizer, opts ...Option) *TextDiff
+func DiffWords(old, new string, opts ...Option) *TextDiff
+func Diff[T comparable](old, new []T) []DiffOp
+func GetCloseMatches(word string, possibilities []string, n int, cutoff float64) []string
+func GroupDiffOps(ops []DiffOp, n int) [][]DiffOp
+func NewCapture() *Capture
+func NewReplaceHook(d DiffHook) *ReplaceHook
+func WithAlgorithm(alg Algorithm) Option
+func WithContext(ctx context.Context) Option
+func WithNewlineTerminated(yes bool) Option
+type Algorithm = algorithms.Algorithm
+type Capture = diff.Capture
+type Change = diff.Change
+type ChangeTag = diff.ChangeTag
+type DiffHook = diff.DiffHook
+type DiffOp = diff.DiffOp
+type DiffTag = diff.DiffTag
+type NoopHook = diff.NoopHook
+type Option = text.Option
+type RemappedChange = text.RemappedChange
+type ReplaceHook = diff.ReplaceHook
+type TextDiff = text.TextDiff
+type Tokenizer = text.Tokenizer
+var Chars = text.Chars
+var Lines = text.Lines
+var LinesAndNewlines = text.LinesAndNewlines
+var Words = text.Words
