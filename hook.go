@@ -1,4 +1,4 @@
-package diff
+package similar
 
 // DiffHook reacts to an edit script from the old version to the new version.
 //

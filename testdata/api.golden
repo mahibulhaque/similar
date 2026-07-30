@@ -1,11 +1,29 @@
-const ChangeDelete = diff.ChangeDelete
-const ChangeEqual = diff.ChangeEqual
-const ChangeInsert = diff.ChangeInsert
-const Delete = diff.Delete
-const Equal = diff.Equal
-const Insert = diff.Insert
+const ChangeDelete
+const ChangeEqual ChangeTag = iota
+const ChangeInsert
+const Delete
+const Equal DiffTag = iota
+const Insert
 const Myers = algorithms.Myers
-const Replace = diff.Replace
+const Replace
+func (NoopHook) Delete(oldIndex, oldLen, newIndex int) error
+func (NoopHook) Equal(oldIndex, newIndex, length int) error
+func (NoopHook) Finish() error
+func (NoopHook) Insert(oldIndex, newIndex, newLen int) error
+func (NoopHook) Replace(oldIndex, oldLen, newIndex, newLen int) error
+func (c *Capture) Delete(oldIndex, oldLen, newIndex int) error
+func (c *Capture) Equal(oldIndex, newIndex, length int) error
+func (c *Capture) Finish() error
+func (c *Capture) Insert(oldIndex, newIndex, newLen int) error
+func (c *Capture) Ops() []DiffOp
+func (c *Capture) Replace(oldIndex, oldLen, newIndex, newLen int) error
+func (c Change) MarshalJSON() ([]byte, error)
+func (c Change) MissingNewline() bool
+func (c Change) NewIndex() (int, bool)
+func (c Change) OldIndex() (int, bool)
+func (c Change) String() string
+func (c Change) Tag() ChangeTag
+func (c Change) Value() string
 func (d *TextDiff) Algorithm() Algorithm
 func (d *TextDiff) AllChanges() iter.Seq[Change]
 func (d *TextDiff) AllRemappedChanges() iter.Seq[RemappedChange]
@@ -23,6 +41,23 @@ func (d *TextDiff) Ratio() float64
 func (d *TextDiff) RemappedChanges(op DiffOp) []RemappedChange
 func (d *TextDiff) SliceNew(start, end int) (string, bool)
 func (d *TextDiff) SliceOld(start, end int) (string, bool)
+func (op DiffOp) ApplyToHook(d DiffHook) error
+func (op DiffOp) IsEmpty() bool
+func (op DiffOp) Len() int
+func (op DiffOp) NewRange() (start, end int)
+func (op DiffOp) OldRange() (start, end int)
+func (r *ReplaceHook) Delete(oldIndex, oldLen, newIndex int) error
+func (r *ReplaceHook) Equal(oldIndex, newIndex, length int) error
+func (r *ReplaceHook) Finish() error
+func (r *ReplaceHook) Inner() DiffHook
+func (r *ReplaceHook) Insert(oldIndex, newIndex, newLen int) error
+func (r *ReplaceHook) Replace(oldIndex, oldLen, newIndex, newLen int) error
+func (t *ChangeTag) UnmarshalJSON(data []byte) error
+func (t *DiffTag) UnmarshalJSON(data []byte) error
+func (t ChangeTag) MarshalJSON() ([]byte, error)
+func (t ChangeTag) String() string
+func (t DiffTag) MarshalJSON() ([]byte, error)
+func (t DiffTag) String() string
 func CaptureDiff[T comparable](alg Algorithm, old, new []T) []DiffOp
 func DiffChars(old, new string, opts ...Option) *TextDiff
 func DiffDeadline[T comparable](ctx context.Context, alg Algorithm, old, new []T) ([]DiffOp, error)
@@ -42,16 +77,16 @@ func WithAlgorithm(alg Algorithm) Option
 func WithContext(ctx context.Context) Option
 func WithNewlineTerminated(yes bool) Option
 type Algorithm = algorithms.Algorithm
-type Capture = diff.Capture
-type Change = diff.Change
-type ChangeTag = diff.ChangeTag
-type DiffHook = diff.DiffHook
-type DiffOp = diff.DiffOp
-type DiffTag = diff.DiffTag
-type NoopHook = diff.NoopHook
+type Capture struct { // contains filtered or unexported fields }
+type Change struct { // contains filtered or unexported fields }
+type ChangeTag int
+type DiffHook interface { Equal(oldIndex, newIndex, length int) error Delete(oldIndex, oldLen, newIndex int) error Insert(oldIndex, newIndex, newLen int) error Replace(oldIndex, oldLen, newIndex, newLen int) error Finish() error }
+type DiffOp struct { Tag DiffTag `json:"tag"` OldIndex int `json:"old_index"` NewIndex int `json:"new_index"` OldLen int `json:"old_len,omitempty"` NewLen int `json:"new_len,omitempty"` }
+type DiffTag int
+type NoopHook struct{}
 type Option func(*config)
 type RemappedChange struct { Tag ChangeTag Value string }
-type ReplaceHook = diff.ReplaceHook
+type ReplaceHook struct { // contains filtered or unexported fields }
 type TextDiff struct { // contains filtered or unexported fields }
 type Tokenizer interface { Split(s string) []string NewlineTerminated() bool }
 var Chars Tokenizer = tokenizer{tokenizeChars, false}

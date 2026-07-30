@@ -1,4 +1,4 @@
-package diff
+package similar
 
 import (
 	"encoding/json"
@@ -108,7 +108,7 @@ func TestCaptureAccumulates(t *testing.T) {
 
 func TestReplaceHookCoalesces(t *testing.T) {
 	c := NewCapture()
-	r := NewReplace(c)
+	r := NewReplaceHook(c)
 	// equal, then delete+insert adjacent (should coalesce into replace).
 	_ = r.Equal(0, 0, 3)
 	_ = r.Delete(3, 2, 3)
@@ -132,7 +132,7 @@ func TestReplaceHookCoalesces(t *testing.T) {
 
 func TestReplaceHookLoneDeleteStaysDelete(t *testing.T) {
 	c := NewCapture()
-	r := NewReplace(c)
+	r := NewReplaceHook(c)
 	_ = r.Delete(0, 2, 0)
 	_ = r.Equal(2, 0, 1)
 	_ = r.Finish()
@@ -143,11 +143,11 @@ func TestReplaceHookLoneDeleteStaysDelete(t *testing.T) {
 }
 
 func TestCompactMergesAndReplays(t *testing.T) {
-	// Compact + Replace should still reconstruct new and stay minimal-cost.
+	// compact + Replace should still reconstruct new and stay minimal-cost.
 	old := []int{1, 2, 3, 4, 5, 6}
 	new := []int{1, 2, 9, 4, 5, 6}
 	c := NewCapture()
-	comp := NewCompact[int](NewReplace(c), old, new)
+	comp := newCompact[int](NewReplaceHook(c), old, new)
 	// Feed a raw equal/delete/insert script (as the core would).
 	_ = comp.Equal(0, 0, 2)
 	_ = comp.Delete(2, 1, 2)

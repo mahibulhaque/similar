@@ -2,8 +2,6 @@ package similar
 
 import (
 	"iter"
-
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
 // Changes returns the changes a single op expands to. An Equal, Delete, or
@@ -36,34 +34,34 @@ func (d *TextDiff) emitChanges(op DiffOp, yield func(Change) bool) bool {
 	case Equal:
 		for k := 0; k < op.OldLen; k++ {
 			oi, ni := op.OldIndex+k, op.NewIndex+k
-			if !yield(diff.EqualChange(d.old[oi], oi, ni)) {
+			if !yield(equalChange(d.old[oi], oi, ni)) {
 				return false
 			}
 		}
 	case Delete:
 		for k := 0; k < op.OldLen; k++ {
 			oi := op.OldIndex + k
-			if !yield(diff.DeleteChange(d.old[oi], oi)) {
+			if !yield(deleteChange(d.old[oi], oi)) {
 				return false
 			}
 		}
 	case Insert:
 		for k := 0; k < op.NewLen; k++ {
 			ni := op.NewIndex + k
-			if !yield(diff.InsertChange(d.new[ni], ni)) {
+			if !yield(insertChange(d.new[ni], ni)) {
 				return false
 			}
 		}
 	case Replace:
 		for k := 0; k < op.OldLen; k++ {
 			oi := op.OldIndex + k
-			if !yield(diff.DeleteChange(d.old[oi], oi)) {
+			if !yield(deleteChange(d.old[oi], oi)) {
 				return false
 			}
 		}
 		for k := 0; k < op.NewLen; k++ {
 			ni := op.NewIndex + k
-			if !yield(diff.InsertChange(d.new[ni], ni)) {
+			if !yield(insertChange(d.new[ni], ni)) {
 				return false
 			}
 		}

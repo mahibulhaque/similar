@@ -1,50 +1,50 @@
-package diff
+package similar
 
 import "github.com/mahibulhaque/similar/internal/diffutil"
 
-// Compact is a DiffHook that performs semantic cleanup on a diff before
+// compact is a DiffHook that performs semantic cleanup on a diff before
 // forwarding it to an inner hook. It records equal/delete/insert operations,
 // then on Finish shifts and merges adjacent hunks to connect as many changes
 // as possible, and finally replays the cleaned ops to the inner hook.
 //
 // It is based on the compaction logic from diffy by Brandon Williams and still
 // needs to be combined with Replace to emit actual Replace operations.
-type Compact[T comparable] struct {
+type compact[T comparable] struct {
 	d   DiffHook
 	ops []DiffOp
 	old []T
 	new []T
 }
 
-// NewCompact wraps an inner hook, capturing against old and new for cleanup.
-func NewCompact[T comparable](d DiffHook, old, new []T) *Compact[T] {
-	return &Compact[T]{d: d, old: old, new: new}
+// newCompact wraps an inner hook, capturing against old and new for cleanup.
+func newCompact[T comparable](d DiffHook, old, new []T) *compact[T] {
+	return &compact[T]{d: d, old: old, new: new}
 }
 
 // Inner returns the wrapped hook.
-func (c *Compact[T]) Inner() DiffHook { return c.d }
+func (c *compact[T]) Inner() DiffHook { return c.d }
 
-func (c *Compact[T]) Equal(oldIndex, newIndex, length int) error {
+func (c *compact[T]) Equal(oldIndex, newIndex, length int) error {
 	c.ops = append(c.ops, DiffOp{Tag: Equal, OldIndex: oldIndex, NewIndex: newIndex, OldLen: length, NewLen: length})
 	return nil
 }
 
-func (c *Compact[T]) Delete(oldIndex, oldLen, newIndex int) error {
+func (c *compact[T]) Delete(oldIndex, oldLen, newIndex int) error {
 	c.ops = append(c.ops, DiffOp{Tag: Delete, OldIndex: oldIndex, NewIndex: newIndex, OldLen: oldLen})
 	return nil
 }
 
-func (c *Compact[T]) Insert(oldIndex, newIndex, newLen int) error {
+func (c *compact[T]) Insert(oldIndex, newIndex, newLen int) error {
 	c.ops = append(c.ops, DiffOp{Tag: Insert, OldIndex: oldIndex, NewIndex: newIndex, NewLen: newLen})
 	return nil
 }
 
-func (c *Compact[T]) Replace(oldIndex, oldLen, newIndex, newLen int) error {
+func (c *compact[T]) Replace(oldIndex, oldLen, newIndex, newLen int) error {
 	c.ops = append(c.ops, DiffOp{Tag: Replace, OldIndex: oldIndex, NewIndex: newIndex, OldLen: oldLen, NewLen: newLen})
 	return nil
 }
 
-func (c *Compact[T]) Finish() error {
+func (c *compact[T]) Finish() error {
 	c.cleanup()
 	for i := range c.ops {
 		if err := c.ops[i].ApplyToHook(c.d); err != nil {
@@ -54,7 +54,7 @@ func (c *Compact[T]) Finish() error {
 	return c.d.Finish()
 }
 
-var _ DiffHook = (*Compact[int])(nil)
+var _ DiffHook = (*compact[int])(nil)
 
 func insertOp(ops []DiffOp, at int, op DiffOp) []DiffOp {
 	ops = append(ops, DiffOp{})
@@ -69,7 +69,7 @@ func removeOp(ops []DiffOp, at int) []DiffOp {
 
 // cleanup walks all edits shifting them up then down, merging where they meet
 // similar edits.
-func (c *Compact[T]) cleanup() {
+func (c *compact[T]) cleanup() {
 	// First compact deletions.
 	pointer := 0
 	for pointer < len(c.ops) {
@@ -93,7 +93,7 @@ func (c *Compact[T]) cleanup() {
 	c.normalizeCursors()
 }
 
-func (c *Compact[T]) normalizeCursors() {
+func (c *compact[T]) normalizeCursors() {
 	oldCursor, newCursor := 0, 0
 	if len(c.ops) > 0 {
 		oldCursor = c.ops[0].OldIndex
@@ -120,7 +120,7 @@ func (c *Compact[T]) normalizeCursors() {
 
 // swapAdjacentInsertDelete swaps ops[left] and ops[left+1] (an insert/delete
 // pair) patching cursor positions so the stream stays contiguous.
-func (c *Compact[T]) swapAdjacentInsertDelete(left int) {
+func (c *compact[T]) swapAdjacentInsertDelete(left int) {
 	right := left + 1
 	oldStart := c.ops[left].OldIndex
 	oldEnd := c.ops[right].OldIndex + c.ops[right].OldLen
@@ -143,7 +143,7 @@ func (c *Compact[T]) swapAdjacentInsertDelete(left int) {
 	}
 }
 
-func (c *Compact[T]) shiftUp(pointer int) int {
+func (c *compact[T]) shiftUp(pointer int) int {
 	for pointer >= 1 {
 		prevOp := c.ops[pointer-1]
 		thisOp := c.ops[pointer]
@@ -230,7 +230,7 @@ func (c *Compact[T]) shiftUp(pointer int) int {
 	return pointer
 }
 
-func (c *Compact[T]) shiftDown(pointer int) int {
+func (c *compact[T]) shiftDown(pointer int) int {
 	for pointer+1 < len(c.ops) {
 		nextOp := c.ops[pointer+1]
 		thisOp := c.ops[pointer]

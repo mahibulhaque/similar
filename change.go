@@ -1,4 +1,4 @@
-package diff
+package similar
 
 import (
 	"encoding/json"
@@ -90,8 +90,8 @@ type Change struct {
 	value       string
 }
 
-// EqualChange builds an unchanged value present in both sequences.
-func EqualChange(value string, oldIndex, newIndex int) Change {
+// equalChange builds an unchanged value present in both sequences.
+func equalChange(value string, oldIndex, newIndex int) Change {
 	return Change{
 		tag:         ChangeEqual,
 		oldIndex:    oldIndex,
@@ -102,8 +102,8 @@ func EqualChange(value string, oldIndex, newIndex int) Change {
 	}
 }
 
-// DeleteChange builds a value removed from the old sequence. It has no new index.
-func DeleteChange(value string, oldIndex int) Change {
+// deleteChange builds a value removed from the old sequence. It has no new index.
+func deleteChange(value string, oldIndex int) Change {
 	return Change{
 		tag:         ChangeDelete,
 		oldIndex:    oldIndex,
@@ -112,8 +112,8 @@ func DeleteChange(value string, oldIndex int) Change {
 	}
 }
 
-// InsertChange builds a value added in the new sequence. It has no old index.
-func InsertChange(value string, newIndex int) Change {
+// insertChange builds a value added in the new sequence. It has no old index.
+func insertChange(value string, newIndex int) Change {
 	return Change{
 		tag:         ChangeInsert,
 		newIndex:    newIndex,

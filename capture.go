@@ -1,4 +1,4 @@
-package diff
+package similar
 
 // Capture is a DiffHook that accumulates every operation into a slice.
 //

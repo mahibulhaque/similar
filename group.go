@@ -1,4 +1,4 @@
-package diff
+package similar
 
 // GroupDiffOps isolates change clusters by eliminating long runs of equal
 // content, leaving n ops of context around each change. It returns one group

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/mahibulhaque/similar/internal/algorithms"
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
 // This file runs a diff algorithm through the library's standard hook stack. It
@@ -49,7 +48,7 @@ func captureOps[T comparable](
 	old, new []T,
 ) ([]DiffOp, error) {
 	capture := NewCapture()
-	hook := diff.NewCompact[T](NewReplaceHook(capture), old, new)
+	hook := newCompact[T](NewReplaceHook(capture), old, new)
 	if err := run(ctx, alg, hook, old, 0, len(old), new, 0, len(new)); err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package diff
+package similar
 
 // DiffRatio returns a measure of the two sequences' similarity in the range
 // [0,1], where 1.0 means identical and 0.0 means completely distinct.

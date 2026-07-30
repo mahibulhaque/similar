@@ -1,10 +1,8 @@
-// Package diff holds the canonical, algorithm-agnostic diff vocabulary: the
-// tagged DiffOp operation, the DiffHook streaming interface, the embeddable
-// NoopHook, and the Capture / Replace / Compact hooks.
-//
-// It is a leaf package (standard library only) so that the algorithm packages
-// and the public facade can share one operation type without an import cycle.
-package diff
+// This file holds the algorithm-agnostic diff vocabulary: the tagged DiffOp
+// operation and the tag that classifies it. The DiffHook streaming interface and
+// the hooks built on it are in hook.go, capture.go, replace.go, and compact.go.
+
+package similar
 
 import (
 	"encoding/json"

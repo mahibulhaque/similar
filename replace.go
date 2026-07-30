@@ -1,4 +1,4 @@
-package diff
+package similar
 
 // triple is an optional (a, b, c) tuple; ok reports whether it is set.
 type triple struct {
@@ -21,8 +21,8 @@ type ReplaceHook struct {
 	eq  triple // (oldIndex, newIndex, len)
 }
 
-// NewReplace wraps an inner hook.
-func NewReplace(d DiffHook) *ReplaceHook {
+// NewReplaceHook wraps an inner hook.
+func NewReplaceHook(d DiffHook) *ReplaceHook {
 	return &ReplaceHook{d: d}
 }
 
