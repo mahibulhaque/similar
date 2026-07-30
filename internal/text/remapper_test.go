@@ -120,9 +120,10 @@ func TestReconstructedSourceMatchesInput(t *testing.T) {
 	}
 	for _, in := range inputs {
 		diffs := map[string]*TextDiff{
-			"lines": DiffLines(in, in),
-			"words": DiffWords(in, in),
-			"chars": DiffChars(in, in),
+			"lines":            DiffLines(in, in),
+			"words":            DiffWords(in, in),
+			"chars":            DiffChars(in, in),
+			"linesAndNewlines": DiffText(in, in, LinesAndNewlines),
 		}
 		for name, d := range diffs {
 			old, new := d.remap()

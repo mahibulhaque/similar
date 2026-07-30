@@ -10,8 +10,9 @@ import (
 )
 
 // TextDiff is a captured text diff: the tokenized old and new sides plus the
-// diff ops between them. Construct it with DiffLines, DiffWords, DiffChars, or
-// DiffSlices.
+// diff ops between them. Construct it with DiffText and a Tokenizer, with the
+// DiffLines, DiffWords, and DiffChars conveniences, or — for input that is
+// already tokenized — with DiffSlices.
 //
 // A TextDiff also knows its own source text, reconstructed from its tokens, so
 // SliceOld, SliceNew, and RemappedChanges map ops back onto connected runs of
@@ -28,21 +29,34 @@ type TextDiff struct {
 	remapNew  sideRemapper
 }
 
+// DiffText diffs old and new split by tok. Pass one of Lines, Words, Chars, or
+// LinesAndNewlines, or any Tokenizer of your own. The newline-terminated flag
+// defaults to what tok reports; WithNewlineTerminated overrides it.
+//
+// It panics if tok is nil: this returns a *TextDiff and no error, so an
+// unusable argument is rejected where the caller can see which one was wrong.
+func DiffText(old, new string, tok Tokenizer, opts ...Option) *TextDiff {
+	if tok == nil {
+		panic("text: nil tokenizer")
+	}
+	return build(tok.Split(old), tok.Split(new), tok.NewlineTerminated(), opts)
+}
+
 // DiffLines diffs old and new split into lines (newlines attached). The
 // newline-terminated flag defaults to true for line diffs.
 func DiffLines(old, new string, opts ...Option) *TextDiff {
-	return build(tokenizeLines(old), tokenizeLines(new), true, opts)
+	return DiffText(old, new, Lines, opts...)
 }
 
 // DiffWords diffs old and new split into words (whitespace runs and
 // non-whitespace runs).
 func DiffWords(old, new string, opts ...Option) *TextDiff {
-	return build(tokenizeWords(old), tokenizeWords(new), false, opts)
+	return DiffText(old, new, Words, opts...)
 }
 
 // DiffChars diffs old and new split into characters (rune boundaries).
 func DiffChars(old, new string, opts ...Option) *TextDiff {
-	return build(tokenizeChars(old), tokenizeChars(new), false, opts)
+	return DiffText(old, new, Chars, opts...)
 }
 
 // DiffSlices diffs two already-tokenized slices. The slices are copied, so the

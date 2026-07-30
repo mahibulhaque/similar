@@ -20,6 +20,9 @@ type (
 	ChangeTag = diff.ChangeTag
 	// Option configures a TextDiff construction.
 	Option = text.Option
+	// Tokenizer splits a string into the tokens a diff compares. Implement it
+	// to diff by a rule this package does not ship. See [text.Tokenizer].
+	Tokenizer = text.Tokenizer
 	// RemappedChange is a tagged run of the original text, as produced by
 	// [TextDiff.RemappedChanges].
 	RemappedChange = text.RemappedChange
@@ -31,6 +34,26 @@ const (
 	ChangeDelete = diff.ChangeDelete
 	ChangeInsert = diff.ChangeInsert
 )
+
+// The tokenizers this package ships, for use with [DiffText]. Treat them as
+// constants — they are variables only because an interface value cannot be one.
+var (
+	// Lines splits into lines with the trailing newline attached.
+	Lines = text.Lines
+	// Words splits into alternating whitespace and non-whitespace runs.
+	Words = text.Words
+	// Chars splits into characters on rune boundaries.
+	Chars = text.Chars
+	// LinesAndNewlines splits into alternating newline and non-newline runs,
+	// keeping terminators as tokens of their own.
+	LinesAndNewlines = text.LinesAndNewlines
+)
+
+// DiffText diffs old and new split by tok, which may be one of [Lines],
+// [Words], [Chars], [LinesAndNewlines], or a [Tokenizer] of your own.
+func DiffText(old, new string, tok Tokenizer, opts ...Option) *TextDiff {
+	return text.DiffText(old, new, tok, opts...)
+}
 
 // DiffLines diffs old and new split into lines (newlines attached).
 func DiffLines(old, new string, opts ...Option) *TextDiff {
