@@ -17,6 +17,11 @@ type (
 	Capture = diff.Capture
 	// ReplaceHook coalesces adjacent delete+insert into Replace operations.
 	ReplaceHook = diff.ReplaceHook
+	// Change is an expanded diff operation: a tagged value with its old/new
+	// position. See [diff.Change].
+	Change = diff.Change
+	// ChangeTag identifies the kind of a Change (equal/delete/insert).
+	ChangeTag = diff.ChangeTag
 )
 
 // DiffTag values.
@@ -27,8 +32,23 @@ const (
 	Replace = diff.Replace
 )
 
+// ChangeTag values.
+const (
+	ChangeEqual  = diff.ChangeEqual
+	ChangeDelete = diff.ChangeDelete
+	ChangeInsert = diff.ChangeInsert
+)
+
 // NewCapture returns an empty Capture hook.
 func NewCapture() *Capture { return diff.NewCapture() }
 
 // NewReplaceHook wraps an inner hook to coalesce delete+insert into replace.
 func NewReplaceHook(d DiffHook) *ReplaceHook { return diff.NewReplace(d) }
+
+// GroupDiffOps isolates change clusters with n items of context.
+func GroupDiffOps(ops []DiffOp, n int) [][]DiffOp { return diff.GroupDiffOps(ops, n) }
+
+// DiffRatio returns the similarity of two sequences from their ops and lengths.
+func DiffRatio(ops []DiffOp, oldLen, newLen int) float64 {
+	return diff.DiffRatio(ops, oldLen, newLen)
+}

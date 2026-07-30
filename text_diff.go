@@ -1,11 +1,9 @@
-package text
+package similar
 
 import (
 	"iter"
 	"sync"
 
-	"github.com/mahibulhaque/similar/internal/algorithms"
-	"github.com/mahibulhaque/similar/internal/diff"
 	"github.com/mahibulhaque/similar/internal/engine"
 )
 
@@ -20,9 +18,9 @@ import (
 type TextDiff struct {
 	old               []string
 	new               []string
-	ops               []diff.DiffOp
+	ops               []DiffOp
 	newlineTerminated bool
-	algorithm         algorithms.Algorithm
+	algorithm         Algorithm
 
 	remapOnce sync.Once
 	remapOld  sideRemapper
@@ -92,7 +90,7 @@ func build(oldToks, newToks []string, newlineDefault bool, opts []Option) *TextD
 }
 
 // Algorithm returns the algorithm that produced the diff.
-func (d *TextDiff) Algorithm() algorithms.Algorithm { return d.algorithm }
+func (d *TextDiff) Algorithm() Algorithm { return d.algorithm }
 
 // NewlineTerminated reports whether tokens are treated as newline-terminated.
 func (d *TextDiff) NewlineTerminated() bool { return d.newlineTerminated }
@@ -127,16 +125,16 @@ func (d *TextDiff) NewTokens() iter.Seq[string] { return sliceSeq(d.new) }
 
 // Ratio returns the similarity of the two sides in the range [0,1].
 func (d *TextDiff) Ratio() float64 {
-	return diff.DiffRatio(d.ops, len(d.old), len(d.new))
+	return DiffRatio(d.ops, len(d.old), len(d.new))
 }
 
 // Ops returns the captured diff ops. The returned slice is owned by the
 // TextDiff and must not be modified.
-func (d *TextDiff) Ops() []diff.DiffOp { return d.ops }
+func (d *TextDiff) Ops() []DiffOp { return d.ops }
 
 // GroupedOps isolates change clusters with n items of surrounding context.
-func (d *TextDiff) GroupedOps(n int) [][]diff.DiffOp {
-	return diff.GroupDiffOps(d.ops, n)
+func (d *TextDiff) GroupedOps(n int) [][]DiffOp {
+	return GroupDiffOps(d.ops, n)
 }
 
 // remap builds the byte-offset tables for both sides on first use.
@@ -173,18 +171,18 @@ func (d *TextDiff) SliceNew(start, end int) (string, bool) {
 //
 // It panics if op holds indices out of range for this diff's tokens, matching
 // the upstream crate.
-func (d *TextDiff) RemappedChanges(op diff.DiffOp) []RemappedChange {
+func (d *TextDiff) RemappedChanges(op DiffOp) []RemappedChange {
 	switch op.Tag {
-	case diff.Equal:
-		return []RemappedChange{{diff.ChangeEqual, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)}}
-	case diff.Delete:
-		return []RemappedChange{{diff.ChangeDelete, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)}}
-	case diff.Insert:
-		return []RemappedChange{{diff.ChangeInsert, d.mustNew(op.NewIndex, op.NewIndex+op.NewLen)}}
-	case diff.Replace:
+	case Equal:
+		return []RemappedChange{{ChangeEqual, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)}}
+	case Delete:
+		return []RemappedChange{{ChangeDelete, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)}}
+	case Insert:
+		return []RemappedChange{{ChangeInsert, d.mustNew(op.NewIndex, op.NewIndex+op.NewLen)}}
+	case Replace:
 		return []RemappedChange{
-			{diff.ChangeDelete, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)},
-			{diff.ChangeInsert, d.mustNew(op.NewIndex, op.NewIndex+op.NewLen)},
+			{ChangeDelete, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)},
+			{ChangeInsert, d.mustNew(op.NewIndex, op.NewIndex+op.NewLen)},
 		}
 	default:
 		return nil

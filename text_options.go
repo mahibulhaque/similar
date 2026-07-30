@@ -1,10 +1,8 @@
-package text
+package similar
 
 import (
 	"context"
 	"fmt"
-
-	"github.com/mahibulhaque/similar/internal/algorithms"
 )
 
 // Option configures a TextDiff construction. Options are applied in order; a
@@ -15,7 +13,7 @@ type Option func(*config)
 // so "unset" (auto per diff kind) is distinguishable from an explicit false.
 type config struct {
 	ctx               context.Context
-	algorithm         algorithms.Algorithm
+	algorithm         Algorithm
 	newlineTerminated *bool
 }
 
@@ -31,7 +29,7 @@ func WithContext(ctx context.Context) Option {
 // It panics if alg names no known algorithm. The diff constructors return a
 // *TextDiff with no error, so an unusable value has to be rejected here, where
 // the caller can see which argument was wrong.
-func WithAlgorithm(alg algorithms.Algorithm) Option {
+func WithAlgorithm(alg Algorithm) Option {
 	if !alg.Valid() {
 		panic(fmt.Sprintf("text: unknown algorithm %d", int(alg)))
 	}
@@ -46,7 +44,7 @@ func WithNewlineTerminated(yes bool) Option {
 }
 
 func resolve(opts []Option) config {
-	c := config{ctx: context.Background(), algorithm: algorithms.Myers}
+	c := config{ctx: context.Background(), algorithm: Myers}
 	for _, o := range opts {
 		if o != nil {
 			o(&c)

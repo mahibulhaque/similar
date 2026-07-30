@@ -6,6 +6,23 @@ const Equal = diff.Equal
 const Insert = diff.Insert
 const Myers = algorithms.Myers
 const Replace = diff.Replace
+func (d *TextDiff) Algorithm() Algorithm
+func (d *TextDiff) AllChanges() iter.Seq[Change]
+func (d *TextDiff) AllRemappedChanges() iter.Seq[RemappedChange]
+func (d *TextDiff) Changes(op DiffOp) iter.Seq[Change]
+func (d *TextDiff) GroupedOps(n int) [][]DiffOp
+func (d *TextDiff) NewLen() int
+func (d *TextDiff) NewToken(i int) (string, bool)
+func (d *TextDiff) NewTokens() iter.Seq[string]
+func (d *TextDiff) NewlineTerminated() bool
+func (d *TextDiff) OldLen() int
+func (d *TextDiff) OldToken(i int) (string, bool)
+func (d *TextDiff) OldTokens() iter.Seq[string]
+func (d *TextDiff) Ops() []DiffOp
+func (d *TextDiff) Ratio() float64
+func (d *TextDiff) RemappedChanges(op DiffOp) []RemappedChange
+func (d *TextDiff) SliceNew(start, end int) (string, bool)
+func (d *TextDiff) SliceOld(start, end int) (string, bool)
 func CaptureDiff[T comparable](alg Algorithm, old, new []T) []DiffOp
 func DiffChars(old, new string, opts ...Option) *TextDiff
 func DiffDeadline[T comparable](ctx context.Context, alg Algorithm, old, new []T) ([]DiffOp, error)
@@ -32,12 +49,12 @@ type DiffHook = diff.DiffHook
 type DiffOp = diff.DiffOp
 type DiffTag = diff.DiffTag
 type NoopHook = diff.NoopHook
-type Option = text.Option
-type RemappedChange = text.RemappedChange
+type Option func(*config)
+type RemappedChange struct { Tag ChangeTag Value string }
 type ReplaceHook = diff.ReplaceHook
-type TextDiff = text.TextDiff
-type Tokenizer = text.Tokenizer
-var Chars = text.Chars
-var Lines = text.Lines
-var LinesAndNewlines = text.LinesAndNewlines
-var Words = text.Words
+type TextDiff struct { // contains filtered or unexported fields }
+type Tokenizer interface { Split(s string) []string NewlineTerminated() bool }
+var Chars Tokenizer = tokenizer{tokenizeChars, false}
+var Lines Tokenizer = tokenizer{tokenizeLines, true}
+var LinesAndNewlines Tokenizer = tokenizer{tokenizeLinesAndNewlines, false}
+var Words Tokenizer = tokenizer{tokenizeWords, false}

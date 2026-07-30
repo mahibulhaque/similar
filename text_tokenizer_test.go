@@ -1,12 +1,10 @@
-package text
+package similar
 
 import (
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
 // Every shipped tokenizer splits exactly like the function behind it, and only
@@ -77,10 +75,10 @@ func TestDiffTextLinesAndNewlines(t *testing.T) {
 	}
 	got := slices.Collect(d.AllRemappedChanges())
 	want := []RemappedChange{
-		{diff.ChangeEqual, "a"},
-		{diff.ChangeDelete, "\n"},
-		{diff.ChangeInsert, "\n\n"},
-		{diff.ChangeEqual, "b"},
+		{ChangeEqual, "a"},
+		{ChangeDelete, "\n"},
+		{ChangeInsert, "\n\n"},
+		{ChangeEqual, "b"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("remapped = %+v, want %+v", got, want)
@@ -117,10 +115,10 @@ func TestDiffTextCustomTokenizer(t *testing.T) {
 	}
 	got := slices.Collect(d.AllRemappedChanges())
 	want := []RemappedChange{
-		{diff.ChangeEqual, "a,"},
-		{diff.ChangeDelete, "b"},
-		{diff.ChangeInsert, "B"},
-		{diff.ChangeEqual, ",c"},
+		{ChangeEqual, "a,"},
+		{ChangeDelete, "b"},
+		{ChangeInsert, "B"},
+		{ChangeEqual, ",c"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("remapped = %+v, want %+v", got, want)

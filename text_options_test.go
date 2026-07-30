@@ -1,16 +1,14 @@
-package text
+package similar
 
 import (
 	"context"
 	"testing"
-
-	"github.com/mahibulhaque/similar/internal/algorithms"
 )
 
 func TestWithAlgorithmIsHonored(t *testing.T) {
-	d := DiffLines("a\nb\n", "a\nc\n", WithAlgorithm(algorithms.Myers))
-	if got := d.Algorithm(); got != algorithms.Myers {
-		t.Fatalf("Algorithm = %v, want %v", got, algorithms.Myers)
+	d := DiffLines("a\nb\n", "a\nc\n", WithAlgorithm(Myers))
+	if got := d.Algorithm(); got != Myers {
+		t.Fatalf("Algorithm = %v, want %v", got, Myers)
 	}
 	if len(d.Ops()) == 0 {
 		t.Fatal("ops = none, want a diff")
@@ -27,12 +25,12 @@ func TestWithAlgorithmRejectsUnknown(t *testing.T) {
 			t.Fatalf("panic = %v, want %q", r, want)
 		}
 	}()
-	WithAlgorithm(algorithms.Algorithm(99))
+	WithAlgorithm(Algorithm(99))
 }
 
 func TestDefaultsAreMyersAndBackground(t *testing.T) {
 	c := resolve(nil)
-	if c.algorithm != algorithms.Myers {
+	if c.algorithm != Myers {
 		t.Fatalf("algorithm = %v, want myers", c.algorithm)
 	}
 	if c.ctx != context.Background() {

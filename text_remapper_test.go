@@ -1,11 +1,9 @@
-package text
+package similar
 
 import (
 	"reflect"
 	"slices"
 	"testing"
-
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
 func TestRemappedChangesWordDiff(t *testing.T) {
@@ -13,10 +11,10 @@ func TestRemappedChangesWordDiff(t *testing.T) {
 
 	got := slices.Collect(d.AllRemappedChanges())
 	want := []RemappedChange{
-		{diff.ChangeEqual, "foo "},
-		{diff.ChangeDelete, "bar"},
-		{diff.ChangeInsert, "bor"},
-		{diff.ChangeEqual, " baz"},
+		{ChangeEqual, "foo "},
+		{ChangeDelete, "bar"},
+		{ChangeInsert, "bor"},
+		{ChangeEqual, " baz"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("remapped = %+v, want %+v", got, want)
@@ -28,10 +26,10 @@ func TestRemappedChangesCharDiffConnectsRuns(t *testing.T) {
 
 	got := slices.Collect(d.AllRemappedChanges())
 	want := []RemappedChange{
-		{diff.ChangeEqual, "foo"},
-		{diff.ChangeDelete, "bar"},
-		{diff.ChangeInsert, "BAR"},
-		{diff.ChangeEqual, "baz"},
+		{ChangeEqual, "foo"},
+		{ChangeDelete, "bar"},
+		{ChangeInsert, "BAR"},
+		{ChangeEqual, "baz"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("remapped = %+v, want %+v", got, want)
@@ -98,10 +96,10 @@ func TestSlicesFromCallerTokens(t *testing.T) {
 	}
 	got := slices.Collect(d.AllRemappedChanges())
 	want := []RemappedChange{
-		{diff.ChangeEqual, "foo "},
-		{diff.ChangeDelete, "bar"},
-		{diff.ChangeInsert, "bor"},
-		{diff.ChangeEqual, " baz"},
+		{ChangeEqual, "foo "},
+		{ChangeDelete, "bar"},
+		{ChangeInsert, "bor"},
+		{ChangeEqual, " baz"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("remapped = %+v, want %+v", got, want)
@@ -144,5 +142,5 @@ func TestRemappedChangesPanicsOutOfBounds(t *testing.T) {
 		}
 	}()
 	d := DiffWords("foo", "foo")
-	d.RemappedChanges(diff.DiffOp{Tag: diff.Equal, OldIndex: 0, NewIndex: 0, OldLen: 99, NewLen: 99})
+	d.RemappedChanges(DiffOp{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 99, NewLen: 99})
 }

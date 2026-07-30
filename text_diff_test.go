@@ -1,18 +1,16 @@
-package text
+package similar
 
 import (
 	"reflect"
 	"slices"
 	"testing"
-
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
 func TestDiffLinesOps(t *testing.T) {
 	d := DiffLines("a\nb\nc", "a\nb\nC")
-	want := []diff.DiffOp{
-		{Tag: diff.Equal, OldIndex: 0, NewIndex: 0, OldLen: 2, NewLen: 2},
-		{Tag: diff.Replace, OldIndex: 2, NewIndex: 2, OldLen: 1, NewLen: 1},
+	want := []DiffOp{
+		{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 2, NewLen: 2},
+		{Tag: Replace, OldIndex: 2, NewIndex: 2, OldLen: 1, NewLen: 1},
 	}
 	if !reflect.DeepEqual(d.Ops(), want) {
 		t.Fatalf("ops = %v, want %v", d.Ops(), want)
@@ -24,10 +22,10 @@ func TestDiffLinesOps(t *testing.T) {
 
 func TestDiffWordsOps(t *testing.T) {
 	d := DiffWords("foo bar baz", "foo BAR baz")
-	want := []diff.DiffOp{
-		{Tag: diff.Equal, OldIndex: 0, NewIndex: 0, OldLen: 2, NewLen: 2},
-		{Tag: diff.Replace, OldIndex: 2, NewIndex: 2, OldLen: 1, NewLen: 1},
-		{Tag: diff.Equal, OldIndex: 3, NewIndex: 3, OldLen: 2, NewLen: 2},
+	want := []DiffOp{
+		{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 2, NewLen: 2},
+		{Tag: Replace, OldIndex: 2, NewIndex: 2, OldLen: 1, NewLen: 1},
+		{Tag: Equal, OldIndex: 3, NewIndex: 3, OldLen: 2, NewLen: 2},
 	}
 	if !reflect.DeepEqual(d.Ops(), want) {
 		t.Fatalf("ops = %v, want %v", d.Ops(), want)
@@ -39,10 +37,10 @@ func TestDiffWordsOps(t *testing.T) {
 
 func TestDiffCharsOps(t *testing.T) {
 	d := DiffChars("abcdef", "abcDDf")
-	want := []diff.DiffOp{
-		{Tag: diff.Equal, OldIndex: 0, NewIndex: 0, OldLen: 3, NewLen: 3},
-		{Tag: diff.Replace, OldIndex: 3, NewIndex: 3, OldLen: 2, NewLen: 2},
-		{Tag: diff.Equal, OldIndex: 5, NewIndex: 5, OldLen: 1, NewLen: 1},
+	want := []DiffOp{
+		{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 3, NewLen: 3},
+		{Tag: Replace, OldIndex: 3, NewIndex: 3, OldLen: 2, NewLen: 2},
+		{Tag: Equal, OldIndex: 5, NewIndex: 5, OldLen: 1, NewLen: 1},
 	}
 	if !reflect.DeepEqual(d.Ops(), want) {
 		t.Fatalf("ops = %v, want %v", d.Ops(), want)
@@ -53,10 +51,10 @@ func TestDiffSlicesOps(t *testing.T) {
 	old := []string{"foo", "bar", "baz"}
 	new := []string{"foo", "BAR", "baz"}
 	d := DiffSlices(old, new)
-	want := []diff.DiffOp{
-		{Tag: diff.Equal, OldIndex: 0, NewIndex: 0, OldLen: 1, NewLen: 1},
-		{Tag: diff.Replace, OldIndex: 1, NewIndex: 1, OldLen: 1, NewLen: 1},
-		{Tag: diff.Equal, OldIndex: 2, NewIndex: 2, OldLen: 1, NewLen: 1},
+	want := []DiffOp{
+		{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 1, NewLen: 1},
+		{Tag: Replace, OldIndex: 1, NewIndex: 1, OldLen: 1, NewLen: 1},
+		{Tag: Equal, OldIndex: 2, NewIndex: 2, OldLen: 1, NewLen: 1},
 	}
 	if !reflect.DeepEqual(d.Ops(), want) {
 		t.Fatalf("ops = %v, want %v", d.Ops(), want)

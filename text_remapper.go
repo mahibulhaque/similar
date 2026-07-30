@@ -1,15 +1,13 @@
-package text
+package similar
 
 import (
 	"strings"
-
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
 // RemappedChange is a tagged run of the original text: the value is a connected
 // substring of the old or new input, not a single token.
 type RemappedChange struct {
-	Tag   diff.ChangeTag
+	Tag   ChangeTag
 	Value string
 }
 

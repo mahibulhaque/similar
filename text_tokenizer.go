@@ -1,4 +1,4 @@
-package text
+package similar
 
 // Tokenizer splits a string into the tokens a diff compares. It is the seam
 // between "how text is cut up" and everything else the layer does with the

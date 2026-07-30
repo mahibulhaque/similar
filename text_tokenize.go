@@ -1,16 +1,12 @@
-// Package text is the text-diffing convenience layer built on top of the diff
-// vocabulary and the Myers algorithm. It tokenizes strings, diffs the tokens,
-// and exposes the result as tagged changes, a similarity ratio, grouped ops, a
-// remapper onto the original strings, and a difflib-style close-match finder.
-//
 // The functions in this file are the splitting halves of the Tokenizer values
-// declared in tokenizer.go; callers reach them through those values, or supply
-// a Tokenizer of their own.
+// declared in text_tokenizer.go; callers reach them through those values, or
+// supply a Tokenizer of their own.
 //
-// It operates on concrete Go strings (tokens are []string); the Rust crate's
+// They operate on concrete Go strings (tokens are []string); the Rust crate's
 // DiffableStr trait machinery is unnecessary because Go's string already covers
 // its use.
-package text
+
+package similar
 
 import (
 	"unicode"

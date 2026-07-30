@@ -1,4 +1,4 @@
-package text
+package similar
 
 import "maps"
 
