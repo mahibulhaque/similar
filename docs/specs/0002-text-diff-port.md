@@ -70,8 +70,8 @@ existing flat facade (everything under package `similar`) is preserved.
 29. As a Go developer, I want `GetCloseMatches` to accept a cutoff and a max count, so that I control result quality and quantity.
 30. As a Go developer, I want close-match results ordered by similarity with a stable lexicographic tie-break, so that results are deterministic.
 31. As a Go developer, I want all these types re-exported flat under package `similar`, so that I use one import path and one namespace.
-32. As a library maintainer, I want the text implementation hidden in `internal/`, so that the public API stays small and I can refactor internals without breaking users.
-33. As a library maintainer, I want the diff vocabulary (`Change`/`ChangeTag`, ratio, grouping) to live with the existing diff types, so that the package layering stays coherent and acyclic.
+32. As a library maintainer, I want the text implementation hidden in `internal/`, so that the public API stays small and I can refactor internals without breaking users. *(Superseded by [ADR 0001](../adr/0001-vocabulary-at-the-root.md) — hiding the implementation behind type aliases left all 54 exported methods undocumented. Unexported identifiers in `package similar` hide it just as well.)*
+33. As a library maintainer, I want the diff vocabulary (`Change`/`ChangeTag`, ratio, grouping) to live with the existing diff types, so that the package layering stays coherent and acyclic. *(Superseded by [ADR 0001](../adr/0001-vocabulary-at-the-root.md) — it still lives with them, now at the root.)*
 34. As a library maintainer, I want behavior pinned to the upstream crate's documented examples, so that the port is verifiably faithful.
 35. As a library maintainer, I want the library to stay standard-library-only, so that adoption carries no dependency cost.
 36. As a Go developer, I want runnable example tests, so that the docs stay correct and show real usage.
@@ -79,6 +79,12 @@ existing flat facade (everything under package `similar`) is preserved.
 ## Implementation Decisions
 
 ### Layering & modules
+
+> **Superseded by [ADR 0001](../adr/0001-vocabulary-at-the-root.md).** The module
+> boundaries below (`internal/text`, `internal/diff`, the `aliases.go` convention)
+> describe the v0.2.0 layout. The vocabulary and the text layer are now declared in
+> `package similar` directly; `internal/algorithms` and `internal/diffutil` remain. The
+> string model and the rest of this section still hold.
 
 - **String model:** the text layer operates on concrete Go `string`; tokens are
   `[]string`. The Rust `DiffableStr`/`DiffableStrRef`/`DiffInput`/`IntoDiffInput` trait
