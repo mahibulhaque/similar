@@ -78,32 +78,48 @@ func (t *ChangeTag) UnmarshalJSON(data []byte) error {
 // change-by-change.
 //
 // A ChangeDelete has an old index but no new index; a ChangeInsert has a new
-// index but no old index; a ChangeEqual has both. Absent indices are modeled
-// with the comma-ok accessors OldIndex/NewIndex.
+// index but no old index; a ChangeEqual has both. Which indices are present
+// follows from the tag, so a Change is built with one constructor per tag and
+// absent indices are read back through the comma-ok accessors OldIndex/NewIndex.
 type Change struct {
-	tag      ChangeTag
-	oldIndex *int
-	newIndex *int
-	value    string
+	tag         ChangeTag
+	oldIndex    int
+	newIndex    int
+	hasOldIndex bool
+	hasNewIndex bool
+	value       string
 }
 
-// NewChange builds a Change. An index of -1 means "absent" (a delete has no new
-// index, an insert has no old index); any other value is stored as present.
-func NewChange(tag ChangeTag, value string, oldIndex, newIndex int) Change {
+// EqualChange builds an unchanged value present in both sequences.
+func EqualChange(value string, oldIndex, newIndex int) Change {
 	return Change{
-		tag:      tag,
-		oldIndex: indexPtr(oldIndex),
-		newIndex: indexPtr(newIndex),
-		value:    value,
+		tag:         ChangeEqual,
+		oldIndex:    oldIndex,
+		newIndex:    newIndex,
+		hasOldIndex: true,
+		hasNewIndex: true,
+		value:       value,
 	}
 }
 
-func indexPtr(i int) *int {
-	if i < 0 {
-		return nil
+// DeleteChange builds a value removed from the old sequence. It has no new index.
+func DeleteChange(value string, oldIndex int) Change {
+	return Change{
+		tag:         ChangeDelete,
+		oldIndex:    oldIndex,
+		hasOldIndex: true,
+		value:       value,
 	}
-	v := i
-	return &v
+}
+
+// InsertChange builds a value added in the new sequence. It has no old index.
+func InsertChange(value string, newIndex int) Change {
+	return Change{
+		tag:         ChangeInsert,
+		newIndex:    newIndex,
+		hasNewIndex: true,
+		value:       value,
+	}
 }
 
 // Tag returns the change tag.
@@ -114,18 +130,18 @@ func (c Change) Value() string { return c.value }
 
 // OldIndex returns the index in the old sequence and whether it is present.
 func (c Change) OldIndex() (int, bool) {
-	if c.oldIndex == nil {
+	if !c.hasOldIndex {
 		return 0, false
 	}
-	return *c.oldIndex, true
+	return c.oldIndex, true
 }
 
 // NewIndex returns the index in the new sequence and whether it is present.
 func (c Change) NewIndex() (int, bool) {
-	if c.newIndex == nil {
+	if !c.hasNewIndex {
 		return 0, false
 	}
-	return *c.newIndex, true
+	return c.newIndex, true
 }
 
 // MissingNewline reports whether the value does not end in a newline and would
@@ -151,7 +167,16 @@ func (c Change) MarshalJSON() ([]byte, error) {
 		OldIndex *int      `json:"old_index"`
 		NewIndex *int      `json:"new_index"`
 		Value    string    `json:"value"`
-	}{c.tag, c.oldIndex, c.newIndex, c.value})
+	}{c.tag, optIndex(c.oldIndex, c.hasOldIndex), optIndex(c.newIndex, c.hasNewIndex), c.value})
+}
+
+// optIndex renders an optional index as the pointer encoding json needs, so an
+// absent index marshals to null. The pointer exists only for serialization.
+func optIndex(i int, present bool) *int {
+	if !present {
+		return nil
+	}
+	return &i
 }
 
 func endsWithNewline(s string) bool {
