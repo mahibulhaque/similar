@@ -1,11 +1,11 @@
-const ChangeDelete
+const ChangeDelete ChangeTag = iota + 1
 const ChangeEqual ChangeTag = iota
-const ChangeInsert
-const Delete
+const ChangeInsert ChangeTag = iota + 2
+const Delete DiffTag = iota + 1
 const Equal DiffTag = iota
-const Insert
+const Insert DiffTag = iota + 2
 const Myers = algorithms.Myers
-const Replace
+const Replace DiffTag = iota + 3
 func (NoopHook) Delete(oldIndex, oldLen, newIndex int) error
 func (NoopHook) Equal(oldIndex, newIndex, length int) error
 func (NoopHook) Finish() error

@@ -2,6 +2,7 @@ package similar_test
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -104,8 +105,16 @@ func declEntries(fset *token.FileSet, file *ast.File) []string {
 				entries = append(entries, entry)
 			}
 		case *ast.GenDecl:
-			for _, spec := range d.Specs {
-				if entry, ok := specEntry(fset, d.Tok, spec); ok {
+			// A const block states its type and value only on the first spec; the
+			// rest inherit both. Carry them along so every constant records its
+			// own type and ordinal — otherwise reordering a block, which changes
+			// the values callers see, would leave this snapshot untouched.
+			var inherited constContext
+			for i, spec := range d.Specs {
+				if d.Tok == token.CONST {
+					inherited.observe(fset, spec, i)
+				}
+				if entry, ok := specEntry(fset, d.Tok, spec, inherited); ok {
 					entries = append(entries, entry)
 				}
 			}
@@ -150,8 +159,51 @@ func receiverIsExported(recv *ast.FieldList) bool {
 	return ok && ident.IsExported()
 }
 
+// constContext carries what a const spec inherits from earlier specs in its
+// block: the last type written down, and the last value expression together with
+// the position it appeared at.
+type constContext struct {
+	typ       string
+	value     string
+	valueAt   int
+	position  int
+	inherited bool
+}
+
+// observe folds the spec at index i into the context.
+func (c *constContext) observe(fset *token.FileSet, spec ast.Spec, i int) {
+	c.position = i
+	value, ok := spec.(*ast.ValueSpec)
+	if !ok {
+		return
+	}
+	if value.Type != nil {
+		c.typ = render(fset, value.Type)
+	}
+	if len(value.Values) > 0 {
+		c.value = render(fset, value.Values[0])
+		c.valueAt = i
+		c.inherited = false
+		return
+	}
+	c.inherited = true
+}
+
+// implicitValue renders what a valueless const spec actually equals: an iota
+// block counts up from where the iota appeared, and any other repeated
+// expression is reported as a repeat with its position.
+func (c constContext) implicitValue() string {
+	if c.value == "iota" {
+		if offset := c.position - c.valueAt; offset > 0 {
+			return fmt.Sprintf("iota + %d", offset)
+		}
+		return "iota"
+	}
+	return fmt.Sprintf("%s [implicit, position %d]", c.value, c.position)
+}
+
 // specEntry renders a type, const, or var spec. Import specs are skipped.
-func specEntry(fset *token.FileSet, tok token.Token, spec ast.Spec) (string, bool) {
+func specEntry(fset *token.FileSet, tok token.Token, spec ast.Spec, inherited constContext) (string, bool) {
 	switch s := spec.(type) {
 	case *ast.TypeSpec:
 		if !s.Name.IsExported() {
@@ -168,7 +220,11 @@ func specEntry(fset *token.FileSet, tok token.Token, spec ast.Spec) (string, boo
 		clean := *s
 		clean.Doc = nil
 		clean.Comment = nil
-		return tok.String() + " " + render(fset, &clean), true
+		entry := tok.String() + " " + render(fset, &clean)
+		if tok == token.CONST && inherited.inherited {
+			entry += " " + inherited.typ + " = " + inherited.implicitValue()
+		}
+		return entry, true
 	default:
 		return "", false
 	}
