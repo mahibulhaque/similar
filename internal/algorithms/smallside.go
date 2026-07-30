@@ -1,7 +1,6 @@
 package algorithms
 
 import (
-	"github.com/mahibulhaque/similar/internal/diff"
 	"github.com/mahibulhaque/similar/internal/diffutil"
 )
 
@@ -9,7 +8,7 @@ import (
 // tiny and the other large, staying minimal and fast in that shape. It reports
 // whether it emitted the script.
 func maybeEmitSmallSideExact[T comparable](
-	d diff.DiffHook,
+	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 	dl deadline,
@@ -41,7 +40,7 @@ func maybeEmitSmallSideExact[T comparable](
 // the LCS length of old[i:] vs new[j:]; values are bounded by the small-side
 // cap (64), so uint8 suffices.
 func emitSmallOldExact[T comparable](
-	d diff.DiffHook,
+	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 	dl deadline,
@@ -171,7 +170,7 @@ func emitSmallOldExact[T comparable](
 // emitSmallNewExact is the mirror of emitSmallOldExact for the tiny-new /
 // large-old shape. dp[i*width+j] is the LCS length of new[i:] vs old[j:].
 func emitSmallNewExact[T comparable](
-	d diff.DiffHook,
+	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 	dl deadline,

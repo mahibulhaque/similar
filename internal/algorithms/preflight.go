@@ -1,7 +1,6 @@
 package algorithms
 
 import (
-	"github.com/mahibulhaque/similar/internal/diff"
 	"github.com/mahibulhaque/similar/internal/diffutil"
 )
 
@@ -19,7 +18,7 @@ const (
 // The Rust FNV-1a hash bucketing exists only because that port keys maps by
 // u64; here T is comparable, so membership is a direct map lookup.
 func maybeEmitDisjointFastPath[T comparable](
-	d diff.DiffHook,
+	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 	dl deadline,

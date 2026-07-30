@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
 var noDeadline = deadline{}
@@ -55,7 +53,7 @@ func TestSmallSideExactVariants(t *testing.T) {
 		for i := range new {
 			new[i] = i + 10
 		}
-		c := diff.NewCapture()
+		c := newCapture()
 		used, err := maybeEmitSmallSideExact(c, old, 0, len(old), new, 0, len(new), noDeadline)
 		if err != nil {
 			t.Fatal(err)
@@ -63,9 +61,9 @@ func TestSmallSideExactVariants(t *testing.T) {
 		if !used {
 			t.Fatal("expected small-side-exact to be used")
 		}
-		want := []diff.DiffOp{
-			{Tag: diff.Delete, OldIndex: 0, NewIndex: 0, OldLen: 1},
-			{Tag: diff.Insert, OldIndex: 1, NewIndex: 0, NewLen: 1000},
+		want := []capturedOp{
+			{Tag: tagDelete, OldIndex: 0, NewIndex: 0, OldLen: 1},
+			{Tag: tagInsert, OldIndex: 1, NewIndex: 0, NewLen: 1000},
 		}
 		if len(c.Ops()) != len(want) {
 			t.Fatalf("ops = %v, want %v", c.Ops(), want)
@@ -87,7 +85,7 @@ func TestSmallSideExactVariants(t *testing.T) {
 			new[i] = 1000 + i
 		}
 		new[500] = 0
-		c := diff.NewCapture()
+		c := newCapture()
 		used, err := maybeEmitSmallSideExact(c, old, 0, len(old), new, 0, len(new), noDeadline)
 		if err != nil {
 			t.Fatal(err)
@@ -97,7 +95,7 @@ func TestSmallSideExactVariants(t *testing.T) {
 		}
 		found := false
 		for _, op := range c.Ops() {
-			if op.Tag == diff.Equal && op.OldIndex == 0 && op.NewIndex == 500 && op.OldLen == 1 {
+			if op.Tag == tagEqual && op.OldIndex == 0 && op.NewIndex == 500 && op.OldLen == 1 {
 				found = true
 			}
 		}
@@ -112,7 +110,7 @@ func TestSmallSideExactVariants(t *testing.T) {
 			old[i] = i
 		}
 		new := []int{500}
-		c := diff.NewCapture()
+		c := newCapture()
 		used, err := maybeEmitSmallSideExact(c, old, 0, len(old), new, 0, len(new), noDeadline)
 		if err != nil {
 			t.Fatal(err)
@@ -124,15 +122,15 @@ func TestSmallSideExactVariants(t *testing.T) {
 		sawExpectedEqual := false
 		for _, op := range c.Ops() {
 			switch op.Tag {
-			case diff.Delete:
+			case tagDelete:
 				totalDeleted += op.OldLen
-			case diff.Insert:
+			case tagInsert:
 				insertCount++
-			case diff.Equal:
+			case tagEqual:
 				if op.OldIndex == 500 && op.NewIndex == 0 && op.OldLen == 1 {
 					sawExpectedEqual = true
 				}
-			case diff.Replace:
+			case tagReplace:
 				t.Fatal("capture hook must not emit replace")
 			}
 		}
@@ -166,7 +164,7 @@ func TestFrontAnchorRegressionsStayExact(t *testing.T) {
 
 		equalLen := 0
 		for _, op := range ops {
-			if op.Tag == diff.Equal {
+			if op.Tag == tagEqual {
 				equalLen += op.OldLen
 			}
 		}
@@ -246,7 +244,7 @@ func TestHeuristicDeadlineGuards(t *testing.T) {
 		for i := range new {
 			new[i] = 1
 		}
-		c := diff.NewCapture()
+		c := newCapture()
 		used, err := maybeEmitSmallSideExact(c, old, 0, len(old), new, 0, len(new), past)
 		if err != nil {
 			t.Fatal(err)
@@ -268,7 +266,7 @@ func TestHeuristicDeadlineGuards(t *testing.T) {
 		for i := range new {
 			new[i] = 1
 		}
-		c := diff.NewCapture()
+		c := newCapture()
 		os, ns, err := tryEmitFrontAnchor(c, old, 0, len(old), new, 0, len(new), past)
 		if err != nil {
 			t.Fatal(err)
@@ -281,7 +279,7 @@ func TestHeuristicDeadlineGuards(t *testing.T) {
 		}
 
 		// With a live deadline the anchor scan does run.
-		c2 := diff.NewCapture()
+		c2 := newCapture()
 		os2, ns2, err := tryEmitFrontAnchor(c2, old, 0, len(old), new, 0, len(new), noDeadline)
 		if err != nil {
 			t.Fatal(err)
@@ -295,7 +293,7 @@ func TestHeuristicDeadlineGuards(t *testing.T) {
 // --- Finish is always called, including for empty inputs ---
 
 type finishRecorder struct {
-	diff.NoopHook
+	noopHook
 	finished bool
 }
 
@@ -329,7 +327,7 @@ func TestFinishCalled(t *testing.T) {
 // --- Hook errors abort and propagate ---
 
 type errAfter struct {
-	diff.NoopHook
+	noopHook
 	remaining int
 }
 
@@ -468,7 +466,7 @@ func TestSubRangeDiff(t *testing.T) {
 	// Full sequences; diff only a window with non-zero start.
 	old := []int{100, 101, 1, 2, 3, 4, 200}
 	new := []int{100, 101, 1, 9, 3, 4, 200}
-	c := diff.NewCapture()
+	c := newCapture()
 	if err := Diff(c, old, 2, 6, new, 2, 6); err != nil {
 		t.Fatal(err)
 	}
@@ -478,9 +476,9 @@ func TestSubRangeDiff(t *testing.T) {
 	out := make([]int, 0, 4)
 	for _, op := range ops {
 		switch op.Tag {
-		case diff.Equal:
+		case tagEqual:
 			out = append(out, old[op.OldIndex:op.OldIndex+op.OldLen]...)
-		case diff.Insert, diff.Replace:
+		case tagInsert, tagReplace:
 			out = append(out, new[op.NewIndex:op.NewIndex+op.NewLen]...)
 		}
 	}

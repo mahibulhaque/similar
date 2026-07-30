@@ -9,7 +9,6 @@ package algorithms
 import (
 	"context"
 
-	"github.com/mahibulhaque/similar/internal/diff"
 	"github.com/mahibulhaque/similar/internal/diffutil"
 )
 
@@ -51,7 +50,7 @@ func absInt(x int) int {
 
 // Diff runs Myers' diff over the given sub-ranges without a deadline.
 func Diff[T comparable](
-	d diff.DiffHook,
+	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 ) error {
@@ -63,7 +62,7 @@ func Diff[T comparable](
 // middle rather than erroring.
 func DiffDeadline[T comparable](
 	ctx context.Context,
-	d diff.DiffHook,
+	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 ) error {
@@ -87,7 +86,7 @@ func DiffDeadline[T comparable](
 }
 
 func conquer[T comparable](
-	d diff.DiffHook,
+	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 	vf, vb *reachVector,
@@ -243,7 +242,7 @@ func findMiddleSnake[T comparable](
 }
 
 func tryEmitFrontAnchor[T comparable](
-	d diff.DiffHook,
+	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 	dl deadline,

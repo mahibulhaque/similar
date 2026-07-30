@@ -3,8 +3,6 @@ package algorithms
 import (
 	"context"
 	"testing"
-
-	"github.com/mahibulhaque/similar/internal/diff"
 )
 
 // The oracle: independent, brute-force helpers used to judge Myers output
@@ -31,17 +29,17 @@ func bruteLCS[T comparable](old, new []T) int {
 }
 
 // reconstruct applies ops to old and returns the rebuilt new sequence.
-func reconstruct[T comparable](old, new []T, ops []diff.DiffOp) []T {
+func reconstruct[T comparable](old, new []T, ops []capturedOp) []T {
 	out := make([]T, 0, len(new))
 	for _, op := range ops {
 		switch op.Tag {
-		case diff.Equal:
+		case tagEqual:
 			out = append(out, old[op.OldIndex:op.OldIndex+op.OldLen]...)
-		case diff.Delete:
+		case tagDelete:
 			// nothing produced
-		case diff.Insert:
+		case tagInsert:
 			out = append(out, new[op.NewIndex:op.NewIndex+op.NewLen]...)
-		case diff.Replace:
+		case tagReplace:
 			out = append(out, new[op.NewIndex:op.NewIndex+op.NewLen]...)
 		}
 	}
@@ -49,15 +47,15 @@ func reconstruct[T comparable](old, new []T, ops []diff.DiffOp) []T {
 }
 
 // editCost sums the deleted and inserted lengths.
-func editCost(ops []diff.DiffOp) int {
+func editCost(ops []capturedOp) int {
 	cost := 0
 	for _, op := range ops {
 		switch op.Tag {
-		case diff.Delete:
+		case tagDelete:
 			cost += op.OldLen
-		case diff.Insert:
+		case tagInsert:
 			cost += op.NewLen
-		case diff.Replace:
+		case tagReplace:
 			cost += op.OldLen + op.NewLen
 		}
 	}
@@ -66,16 +64,16 @@ func editCost(ops []diff.DiffOp) int {
 
 // captureMyers runs the raw Myers core over the whole slices with a bare
 // Capture hook (equal/delete/insert only, no Replace/Compact).
-func captureMyers[T comparable](old, new []T) []diff.DiffOp {
-	c := diff.NewCapture()
+func captureMyers[T comparable](old, new []T) []capturedOp {
+	c := newCapture()
 	if err := Diff(c, old, 0, len(old), new, 0, len(new)); err != nil {
 		panic(err)
 	}
 	return c.Ops()
 }
 
-func captureMyersDeadline[T comparable](ctx context.Context, old, new []T) []diff.DiffOp {
-	c := diff.NewCapture()
+func captureMyersDeadline[T comparable](ctx context.Context, old, new []T) []capturedOp {
+	c := newCapture()
 	if err := DiffDeadline(ctx, c, old, 0, len(old), new, 0, len(new)); err != nil {
 		panic(err)
 	}
@@ -99,21 +97,21 @@ func slicesEqual[T comparable](a, b []T) bool {
 // a raw script may emit a Delete and an Insert both anchored at the same old
 // position (the standard Myers base case) — those interleave, but every op
 // that consumes old and every op that produces new is individually contiguous.
-func checkContiguous[T comparable](t *testing.T, old, new []T, ops []diff.DiffOp) {
+func checkContiguous[T comparable](t *testing.T, old, new []T, ops []capturedOp) {
 	t.Helper()
 	oldCursor, newCursor := 0, 0
 	for i, op := range ops {
 		os, oe := op.OldRange()
 		ns, ne := op.NewRange()
 		switch op.Tag {
-		case diff.Equal, diff.Delete, diff.Replace:
+		case tagEqual, tagDelete, tagReplace:
 			if os != oldCursor {
 				t.Fatalf("op %d (%v): old start %d, expected %d", i, op.Tag, os, oldCursor)
 			}
 			oldCursor = oe
 		}
 		switch op.Tag {
-		case diff.Equal, diff.Insert, diff.Replace:
+		case tagEqual, tagInsert, tagReplace:
 			if ns != newCursor {
 				t.Fatalf("op %d (%v): new start %d, expected %d", i, op.Tag, ns, newCursor)
 			}
@@ -129,7 +127,7 @@ func checkContiguous[T comparable](t *testing.T, old, new []T, ops []diff.DiffOp
 }
 
 // assertInvariants checks the two load-bearing behaviors plus coverage.
-func assertInvariants[T comparable](t *testing.T, old, new []T, ops []diff.DiffOp) {
+func assertInvariants[T comparable](t *testing.T, old, new []T, ops []capturedOp) {
 	t.Helper()
 	got := reconstruct(old, new, ops)
 	if !slicesEqual(got, new) {
@@ -158,11 +156,11 @@ func TestOracleSelfCheck(t *testing.T) {
 
 	old := []int{1, 2, 3}
 	new := []int{1, 9, 3}
-	ops := []diff.DiffOp{
-		{Tag: diff.Equal, OldIndex: 0, NewIndex: 0, OldLen: 1, NewLen: 1},
-		{Tag: diff.Delete, OldIndex: 1, NewIndex: 1, OldLen: 1},
-		{Tag: diff.Insert, OldIndex: 2, NewIndex: 1, NewLen: 1},
-		{Tag: diff.Equal, OldIndex: 2, NewIndex: 2, OldLen: 1, NewLen: 1},
+	ops := []capturedOp{
+		{Tag: tagEqual, OldIndex: 0, NewIndex: 0, OldLen: 1, NewLen: 1},
+		{Tag: tagDelete, OldIndex: 1, NewIndex: 1, OldLen: 1},
+		{Tag: tagInsert, OldIndex: 2, NewIndex: 1, NewLen: 1},
+		{Tag: tagEqual, OldIndex: 2, NewIndex: 2, OldLen: 1, NewLen: 1},
 	}
 	if got := reconstruct(old, new, ops); !slicesEqual(got, new) {
 		t.Fatalf("reconstruct self-check = %v, want %v", got, new)
