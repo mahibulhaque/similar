@@ -20,9 +20,11 @@ type (
 	ChangeTag = diff.ChangeTag
 	// Option configures a TextDiff construction.
 	Option = text.Option
-	// TextDiffRemapper maps token-level ops back onto the original strings.
-	TextDiffRemapper = text.TextDiffRemapper
-	// RemappedChange is a tagged run of the original text.
+	// Tokenizer splits a string into the tokens a diff compares. Implement it
+	// to diff by a rule this package does not ship. See [text.Tokenizer].
+	Tokenizer = text.Tokenizer
+	// RemappedChange is a tagged run of the original text, as produced by
+	// [TextDiff.RemappedChanges].
 	RemappedChange = text.RemappedChange
 )
 
@@ -32,6 +34,26 @@ const (
 	ChangeDelete = diff.ChangeDelete
 	ChangeInsert = diff.ChangeInsert
 )
+
+// The tokenizers this package ships, for use with [DiffText]. Treat them as
+// constants — they are variables only because an interface value cannot be one.
+var (
+	// Lines splits into lines with the trailing newline attached.
+	Lines = text.Lines
+	// Words splits into alternating whitespace and non-whitespace runs.
+	Words = text.Words
+	// Chars splits into characters on rune boundaries.
+	Chars = text.Chars
+	// LinesAndNewlines splits into alternating newline and non-newline runs,
+	// keeping terminators as tokens of their own.
+	LinesAndNewlines = text.LinesAndNewlines
+)
+
+// DiffText diffs old and new split by tok, which may be one of [Lines],
+// [Words], [Chars], [LinesAndNewlines], or a [Tokenizer] of your own.
+func DiffText(old, new string, tok Tokenizer, opts ...Option) *TextDiff {
+	return text.DiffText(old, new, tok, opts...)
+}
 
 // DiffLines diffs old and new split into lines (newlines attached).
 func DiffLines(old, new string, opts ...Option) *TextDiff {
@@ -61,16 +83,6 @@ func WithAlgorithm(alg Algorithm) Option { return text.WithAlgorithm(alg) }
 
 // WithNewlineTerminated forces the newline-terminated flag.
 func WithNewlineTerminated(yes bool) Option { return text.WithNewlineTerminated(yes) }
-
-// NewTextDiffRemapper builds a remapper from a diff and its original strings.
-func NewTextDiffRemapper(d *TextDiff, old, new string) *TextDiffRemapper {
-	return text.NewTextDiffRemapper(d, old, new)
-}
-
-// NewTextDiffRemapperFromTokens builds a remapper from token slices and strings.
-func NewTextDiffRemapperFromTokens(oldTokens, newTokens []string, old, new string) *TextDiffRemapper {
-	return text.NewTextDiffRemapperFromTokens(oldTokens, newTokens, old, new)
-}
 
 // GetCloseMatches returns up to n possibilities most similar to word.
 func GetCloseMatches(word string, possibilities []string, n int, cutoff float64) []string {

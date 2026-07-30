@@ -50,7 +50,7 @@ func TestChangeTagJSONNames(t *testing.T) {
 
 func TestChangeIndicesCommaOk(t *testing.T) {
 	// Equal: both present.
-	eq := NewChange(ChangeEqual, "a", 2, 5)
+	eq := EqualChange("a", 2, 5)
 	if i, ok := eq.OldIndex(); !ok || i != 2 {
 		t.Errorf("equal OldIndex = (%d,%v), want (2,true)", i, ok)
 	}
@@ -59,7 +59,7 @@ func TestChangeIndicesCommaOk(t *testing.T) {
 	}
 
 	// Delete: old present, new absent.
-	del := NewChange(ChangeDelete, "b", 3, -1)
+	del := DeleteChange("b", 3)
 	if i, ok := del.OldIndex(); !ok || i != 3 {
 		t.Errorf("delete OldIndex = (%d,%v), want (3,true)", i, ok)
 	}
@@ -68,12 +68,23 @@ func TestChangeIndicesCommaOk(t *testing.T) {
 	}
 
 	// Insert: new present, old absent.
-	ins := NewChange(ChangeInsert, "c", -1, 4)
+	ins := InsertChange("c", 4)
 	if _, ok := ins.OldIndex(); ok {
 		t.Errorf("insert OldIndex present, want absent")
 	}
 	if j, ok := ins.NewIndex(); !ok || j != 4 {
 		t.Errorf("insert NewIndex = (%d,%v), want (4,true)", j, ok)
+	}
+}
+
+// A zero index is a real index, not an absent one: the first token of either
+// sequence must still report present.
+func TestChangeZeroIndexIsPresent(t *testing.T) {
+	if i, ok := DeleteChange("b", 0).OldIndex(); !ok || i != 0 {
+		t.Errorf("delete OldIndex = (%d,%v), want (0,true)", i, ok)
+	}
+	if j, ok := InsertChange("c", 0).NewIndex(); !ok || j != 0 {
+		t.Errorf("insert NewIndex = (%d,%v), want (0,true)", j, ok)
 	}
 }
 
@@ -89,7 +100,7 @@ func TestChangeMissingNewlineAndString(t *testing.T) {
 		{"", true, "\n"},
 	}
 	for _, c := range cases {
-		ch := NewChange(ChangeEqual, c.value, 0, 0)
+		ch := EqualChange(c.value, 0, 0)
 		if got := ch.MissingNewline(); got != c.missing {
 			t.Errorf("MissingNewline(%q) = %v, want %v", c.value, got, c.missing)
 		}
@@ -100,7 +111,7 @@ func TestChangeMissingNewlineAndString(t *testing.T) {
 }
 
 func TestChangeMarshalJSONNullIndices(t *testing.T) {
-	del := NewChange(ChangeDelete, "bar", 3, -1)
+	del := DeleteChange("bar", 3)
 	data, err := json.Marshal(del)
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +121,7 @@ func TestChangeMarshalJSONNullIndices(t *testing.T) {
 		t.Errorf("marshal delete = %s, want %s", data, want)
 	}
 
-	ins := NewChange(ChangeInsert, "baz", -1, 4)
+	ins := InsertChange("baz", 4)
 	data, err = json.Marshal(ins)
 	if err != nil {
 		t.Fatal(err)

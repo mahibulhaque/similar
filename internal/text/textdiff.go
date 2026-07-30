@@ -2,6 +2,7 @@ package text
 
 import (
 	"iter"
+	"sync"
 
 	"github.com/mahibulhaque/similar/internal/algorithms"
 	"github.com/mahibulhaque/similar/internal/diff"
@@ -9,35 +10,61 @@ import (
 )
 
 // TextDiff is a captured text diff: the tokenized old and new sides plus the
-// diff ops between them. Construct it with DiffLines, DiffWords, DiffChars, or
-// DiffSlices.
+// diff ops between them. Construct it with DiffText and a Tokenizer, with the
+// DiffLines, DiffWords, and DiffChars conveniences, or — for input that is
+// already tokenized — with DiffSlices.
+//
+// A TextDiff also knows its own source text, reconstructed from its tokens, so
+// SliceOld, SliceNew, and RemappedChanges map ops back onto connected runs of
+// the original strings without being handed them again.
 type TextDiff struct {
 	old               []string
 	new               []string
 	ops               []diff.DiffOp
 	newlineTerminated bool
 	algorithm         algorithms.Algorithm
+
+	remapOnce sync.Once
+	remapOld  sideRemapper
+	remapNew  sideRemapper
+}
+
+// DiffText diffs old and new split by tok. Pass one of Lines, Words, Chars, or
+// LinesAndNewlines, or any Tokenizer of your own. The newline-terminated flag
+// defaults to what tok reports; WithNewlineTerminated overrides it.
+//
+// It panics if tok is nil: this returns a *TextDiff and no error, so an
+// unusable argument is rejected where the caller can see which one was wrong.
+func DiffText(old, new string, tok Tokenizer, opts ...Option) *TextDiff {
+	if tok == nil {
+		panic("text: nil tokenizer")
+	}
+	return build(tok.Split(old), tok.Split(new), tok.NewlineTerminated(), opts)
 }
 
 // DiffLines diffs old and new split into lines (newlines attached). The
 // newline-terminated flag defaults to true for line diffs.
 func DiffLines(old, new string, opts ...Option) *TextDiff {
-	return build(tokenizeLines(old), tokenizeLines(new), true, opts)
+	return DiffText(old, new, Lines, opts...)
 }
 
 // DiffWords diffs old and new split into words (whitespace runs and
 // non-whitespace runs).
 func DiffWords(old, new string, opts ...Option) *TextDiff {
-	return build(tokenizeWords(old), tokenizeWords(new), false, opts)
+	return DiffText(old, new, Words, opts...)
 }
 
 // DiffChars diffs old and new split into characters (rune boundaries).
 func DiffChars(old, new string, opts ...Option) *TextDiff {
-	return build(tokenizeChars(old), tokenizeChars(new), false, opts)
+	return DiffText(old, new, Chars, opts...)
 }
 
 // DiffSlices diffs two already-tokenized slices. The slices are copied, so the
 // caller may reuse them afterwards.
+//
+// The remapping methods reconstruct their source text by joining these tokens,
+// so if the tokens do not account for every byte of some original string, the
+// joined tokens — not that string — are what gets remapped.
 func DiffSlices(old, new []string, opts ...Option) *TextDiff {
 	return build(cloneStrings(old), cloneStrings(new), false, opts)
 }
@@ -110,6 +137,88 @@ func (d *TextDiff) Ops() []diff.DiffOp { return d.ops }
 // GroupedOps isolates change clusters with n items of surrounding context.
 func (d *TextDiff) GroupedOps(n int) [][]diff.DiffOp {
 	return diff.GroupDiffOps(d.ops, n)
+}
+
+// remap builds the byte-offset tables for both sides on first use.
+//
+// Building them costs O(bytes), and most diffs are never remapped — notably the
+// ones GetCloseMatches creates per candidate, which are read only for a ratio —
+// so the cost is deferred until a remapping method is actually called.
+func (d *TextDiff) remap() (*sideRemapper, *sideRemapper) {
+	d.remapOnce.Do(func() {
+		d.remapOld = newSideRemapper(d.old)
+		d.remapNew = newSideRemapper(d.new)
+	})
+	return &d.remapOld, &d.remapNew
+}
+
+// SliceOld returns the run of old-side text covered by token indices
+// [start, end) and whether the range is valid. An empty range yields "".
+func (d *TextDiff) SliceOld(start, end int) (string, bool) {
+	old, _ := d.remap()
+	return old.slice(start, end)
+}
+
+// SliceNew returns the run of new-side text covered by token indices
+// [start, end) and whether the range is valid. An empty range yields "".
+func (d *TextDiff) SliceNew(start, end int) (string, bool) {
+	_, new := d.remap()
+	return new.slice(start, end)
+}
+
+// RemappedChanges returns the runs of original text an op encodes. Unlike
+// Changes, which yields one change per token, this yields one per connected
+// run — useful for word or character diffs where the tokens are tiny. A Replace
+// yields a delete run followed by an insert run.
+//
+// It panics if op holds indices out of range for this diff's tokens, matching
+// the upstream crate.
+func (d *TextDiff) RemappedChanges(op diff.DiffOp) []RemappedChange {
+	switch op.Tag {
+	case diff.Equal:
+		return []RemappedChange{{diff.ChangeEqual, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)}}
+	case diff.Delete:
+		return []RemappedChange{{diff.ChangeDelete, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)}}
+	case diff.Insert:
+		return []RemappedChange{{diff.ChangeInsert, d.mustNew(op.NewIndex, op.NewIndex+op.NewLen)}}
+	case diff.Replace:
+		return []RemappedChange{
+			{diff.ChangeDelete, d.mustOld(op.OldIndex, op.OldIndex+op.OldLen)},
+			{diff.ChangeInsert, d.mustNew(op.NewIndex, op.NewIndex+op.NewLen)},
+		}
+	default:
+		return nil
+	}
+}
+
+// AllRemappedChanges flattens every op into a single lazy stream of runs,
+// mirroring AllChanges.
+func (d *TextDiff) AllRemappedChanges() iter.Seq[RemappedChange] {
+	return func(yield func(RemappedChange) bool) {
+		for _, op := range d.ops {
+			for _, rc := range d.RemappedChanges(op) {
+				if !yield(rc) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func (d *TextDiff) mustOld(start, end int) string {
+	s, ok := d.SliceOld(start, end)
+	if !ok {
+		panic("text: remapped old slice out of bounds")
+	}
+	return s
+}
+
+func (d *TextDiff) mustNew(start, end int) string {
+	s, ok := d.SliceNew(start, end)
+	if !ok {
+		panic("text: remapped new slice out of bounds")
+	}
+	return s
 }
 
 func sliceSeq(s []string) iter.Seq[string] {

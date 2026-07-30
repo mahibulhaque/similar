@@ -49,18 +49,25 @@
 //
 // # Text diffing
 //
-// For text, the higher-level [TextDiff] tokenizes two strings by line, word, or
-// character and exposes the result as tagged [Change] values:
+// For text, the higher-level [TextDiff] tokenizes two strings and exposes the
+// result as tagged [Change] values:
 //
 //	diff := similar.DiffLines("a\nb\nc", "a\nb\nC")
 //	for c := range diff.AllChanges() {
 //		fmt.Printf("%s%s", c.Tag(), c)
 //	}
 //
+// How the strings are cut up is a [Tokenizer], passed to [DiffText]: [Lines],
+// [Words], [Chars], and [LinesAndNewlines] are the ones shipped here, and a
+// caller can implement its own. [DiffLines], [DiffWords], and [DiffChars] are
+// conveniences over the first three; [DiffSlices] takes tokens you made
+// yourself.
+//
 // AllChanges and Changes return an iter.Seq[Change] so changes stream lazily and
 // early-exit cheaply on large inputs; use slices.Collect to gather them. A
 // TextDiff also reports a similarity [TextDiff.Ratio], its raw [TextDiff.Ops],
-// and [TextDiff.GroupedOps] clusters. [NewTextDiffRemapper] maps word or
-// character diffs back onto connected runs of the original strings, and
+// and [TextDiff.GroupedOps] clusters. [TextDiff.AllRemappedChanges] maps word or
+// character diffs back onto connected runs of the original strings — a TextDiff
+// knows its own source text, so the strings need not be passed again — and
 // [GetCloseMatches] finds the closest matches to a word from a candidate list.
 package similar

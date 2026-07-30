@@ -14,8 +14,8 @@ Myers' diff algorithm: a minimal edit script between two slices of any
 - **Streaming or slice.** Collect a `[]DiffOp`, or implement a `DiffHook` and
   receive callbacks as the diff is produced.
 - **Text diffing.** `TextDiff` splits strings by line, word, or character and
-  yields tagged `Change`s, a similarity ratio, grouped ops, a remapper onto the
-  original strings, and difflib-style `GetCloseMatches`.
+  yields tagged `Change`s, a similarity ratio, grouped ops, remapping onto
+  connected runs of the original strings, and difflib-style `GetCloseMatches`.
 - **Standard library only.** A clean leaf dependency.
 
 ## Install
@@ -72,7 +72,8 @@ Wrap a hook in `NewReplaceHook` to coalesce adjacent delete+insert into
 
 ### Text diffing
 
-Diff two strings by line, word, or character and walk the tagged changes:
+Diff two strings by line, word, or character — or by a tokenizer of your own —
+and walk the tagged changes:
 
 ```go
 diff := similar.DiffLines("a\nb\nc", "a\nb\nC")
@@ -85,19 +86,41 @@ fmt.Println(diff.Ratio()) // similarity in [0,1]
 `AllChanges` and `Changes` return an `iter.Seq[Change]`, so changes stream
 lazily and `break` early on large inputs; use `slices.Collect` for a slice.
 
-Map a word or character diff back onto connected runs of the original strings
-with a remapper:
+Map a word or character diff back onto connected runs of the original strings.
+A `TextDiff` knows its own source text, so you don't pass the strings again:
 
 ```go
-old, new := "foo bar baz", "foo bor baz"
-diff := similar.DiffWords(old, new)
-rm := similar.NewTextDiffRemapper(diff, old, new)
-for _, op := range diff.Ops() {
-    for _, s := range rm.IterSlices(op) {
-        fmt.Printf("%s%q\n", s.Tag, s.Value) // " \"foo \"", "-\"bar\"", "+\"bor\"", " \" baz\""
-    }
+diff := similar.DiffWords("foo bar baz", "foo bor baz")
+for s := range diff.AllRemappedChanges() {
+    fmt.Printf("%s%q\n", s.Tag, s.Value) // " \"foo \"", "-\"bar\"", "+\"bor\"", " \" baz\""
 }
 ```
+
+`RemappedChanges(op)` does one op at a time, and `SliceOld`/`SliceNew` extract an
+arbitrary token range as a substring.
+
+`DiffLines`/`DiffWords`/`DiffChars` are conveniences over `DiffText`, which takes
+the tokenizer as an argument — `similar.Lines`, `similar.Words`, `similar.Chars`,
+or `similar.LinesAndNewlines` (line terminators as tokens of their own):
+
+```go
+diff := similar.DiffText("a\nb", "a\n\nb", similar.LinesAndNewlines)
+```
+
+Implement `Tokenizer` to split by a rule the package doesn't ship. `Split` should
+account for every byte of its input, since the remapping methods rebuild the
+source text by joining tokens:
+
+```go
+type commaTokenizer struct{}
+
+func (commaTokenizer) Split(s string) []string { /* "a", ",", "b" */ }
+func (commaTokenizer) NewlineTerminated() bool { return false }
+
+diff := similar.DiffText("a,b,c", "a,B,c", commaTokenizer{})
+```
+
+`DiffSlices` remains the entry point for input you tokenized yourself.
 
 Find the closest matches to a word (difflib-style):
 

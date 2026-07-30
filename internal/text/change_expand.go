@@ -36,34 +36,34 @@ func (d *TextDiff) emitChanges(op diff.DiffOp, yield func(diff.Change) bool) boo
 	case diff.Equal:
 		for k := 0; k < op.OldLen; k++ {
 			oi, ni := op.OldIndex+k, op.NewIndex+k
-			if !yield(diff.NewChange(diff.ChangeEqual, d.old[oi], oi, ni)) {
+			if !yield(diff.EqualChange(d.old[oi], oi, ni)) {
 				return false
 			}
 		}
 	case diff.Delete:
 		for k := 0; k < op.OldLen; k++ {
 			oi := op.OldIndex + k
-			if !yield(diff.NewChange(diff.ChangeDelete, d.old[oi], oi, -1)) {
+			if !yield(diff.DeleteChange(d.old[oi], oi)) {
 				return false
 			}
 		}
 	case diff.Insert:
 		for k := 0; k < op.NewLen; k++ {
 			ni := op.NewIndex + k
-			if !yield(diff.NewChange(diff.ChangeInsert, d.new[ni], -1, ni)) {
+			if !yield(diff.InsertChange(d.new[ni], ni)) {
 				return false
 			}
 		}
 	case diff.Replace:
 		for k := 0; k < op.OldLen; k++ {
 			oi := op.OldIndex + k
-			if !yield(diff.NewChange(diff.ChangeDelete, d.old[oi], oi, -1)) {
+			if !yield(diff.DeleteChange(d.old[oi], oi)) {
 				return false
 			}
 		}
 		for k := 0; k < op.NewLen; k++ {
 			ni := op.NewIndex + k
-			if !yield(diff.NewChange(diff.ChangeInsert, d.new[ni], -1, ni)) {
+			if !yield(diff.InsertChange(d.new[ni], ni)) {
 				return false
 			}
 		}
