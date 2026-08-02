@@ -12,14 +12,6 @@ import (
 	"github.com/mahibulhaque/similar/internal/diffutil"
 )
 
-const (
-	smallSideExactMax              = 64
-	smallSideExactMinLarge         = 512
-	smallSideExactMaxWork          = 64_000_000
-	smallSideDeadlineCheckInterval = 1024
-	frontAnchorDeadlineCheckStep   = 1024
-)
-
 // reachVector records the endpoints of the furthest-reaching D-paths, indexed
 // by diagonal k (which can be negative). It replaces Rust's operator-overloaded
 // Index<isize>: offset maps negative k into a non-negative slice index.
@@ -66,9 +58,9 @@ func DiffDeadline[T comparable](
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 ) error {
-	dl := fromContext(ctx)
+	lim := fromContext(ctx)
 
-	emitted, err := maybeEmitDisjointFastPath(d, old, oldStart, oldEnd, new, newStart, newEnd, dl)
+	emitted, err := maybeEmitDisjointFastPath(d, old, oldStart, oldEnd, new, newStart, newEnd, lim)
 	if err != nil {
 		return err
 	}
@@ -79,7 +71,7 @@ func DiffDeadline[T comparable](
 	maxD := maxD(oldEnd-oldStart, newEnd-newStart)
 	vf := newReachVector(maxD)
 	vb := newReachVector(maxD)
-	if err := conquer(d, old, oldStart, oldEnd, new, newStart, newEnd, vf, vb, dl); err != nil {
+	if err := conquer(d, old, oldStart, oldEnd, new, newStart, newEnd, vf, vb, lim); err != nil {
 		return err
 	}
 	return d.Finish()
@@ -90,7 +82,7 @@ func conquer[T comparable](
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 	vf, vb *reachVector,
-	dl deadline,
+	lim limits,
 ) error {
 	// Peel the common prefix.
 	cpl := diffutil.CommonPrefixLen(old, oldStart, oldEnd, new, newStart, newEnd)
@@ -113,7 +105,7 @@ func conquer[T comparable](
 	for oldStart < oldEnd && newStart < newEnd {
 		oldBefore, newBefore := oldStart, newStart
 		var err error
-		oldStart, newStart, err = tryEmitFrontAnchor(d, old, oldStart, oldEnd, new, newStart, newEnd, dl)
+		oldStart, newStart, err = tryEmitFrontAnchor(d, old, oldStart, oldEnd, new, newStart, newEnd, lim)
 		if err != nil {
 			return err
 		}
@@ -134,18 +126,18 @@ func conquer[T comparable](
 			return err
 		}
 	default:
-		emitted, err := maybeEmitSmallSideExact(d, old, oldStart, oldEnd, new, newStart, newEnd, dl)
+		emitted, err := maybeEmitSmallSideExact(d, old, oldStart, oldEnd, new, newStart, newEnd, lim)
 		if err != nil {
 			return err
 		}
 		if emitted {
 			break
 		}
-		if xStart, yStart, ok := findMiddleSnake(old, oldStart, oldEnd, new, newStart, newEnd, vf, vb, dl); ok {
-			if err := conquer(d, old, oldStart, xStart, new, newStart, yStart, vf, vb, dl); err != nil {
+		if xStart, yStart, ok := findMiddleSnake(old, oldStart, oldEnd, new, newStart, newEnd, vf, vb, lim); ok {
+			if err := conquer(d, old, oldStart, xStart, new, newStart, yStart, vf, vb, lim); err != nil {
 				return err
 			}
-			if err := conquer(d, old, xStart, oldEnd, new, yStart, newEnd, vf, vb, dl); err != nil {
+			if err := conquer(d, old, xStart, oldEnd, new, yStart, newEnd, vf, vb, lim); err != nil {
 				return err
 			}
 		} else {
@@ -175,7 +167,7 @@ func findMiddleSnake[T comparable](
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 	vf, vb *reachVector,
-	dl deadline,
+	lim limits,
 ) (int, int, bool) {
 	n := oldEnd - oldStart
 	m := newEnd - newStart
@@ -190,7 +182,7 @@ func findMiddleSnake[T comparable](
 	_ = vf.length() // capacity invariant: length() >= dMax by construction
 
 	for d := 0; d < dMax; d++ {
-		if dl.exceeded() {
+		if lim.exceeded() {
 			break
 		}
 
@@ -245,15 +237,12 @@ func tryEmitFrontAnchor[T comparable](
 	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
-	dl deadline,
+	lim limits,
 ) (int, int, error) {
-	const maxSkip = 4
-	const minAnchorCommon = 96
-
 	oldLen := oldEnd - oldStart
 	newLen := newEnd - newStart
 
-	if oldLen <= minAnchorCommon || newLen <= minAnchorCommon {
+	if oldLen <= lim.frontAnchorMinCommon || newLen <= lim.frontAnchorMinCommon {
 		return oldStart, newStart, nil
 	}
 
@@ -264,8 +253,8 @@ func tryEmitFrontAnchor[T comparable](
 		return oldStart, newStart, nil
 	}
 
-	maxOldSkip := min(oldLen-1, maxSkip)
-	maxNewSkip := min(newLen-1, maxSkip)
+	maxOldSkip := min(oldLen-1, lim.frontAnchorMaxSkip)
+	maxNewSkip := min(newLen-1, lim.frontAnchorMaxSkip)
 
 	preferInsertAnchor := newLen > oldLen
 	preferDeleteAnchor := oldLen > newLen
@@ -278,7 +267,7 @@ func tryEmitFrontAnchor[T comparable](
 search:
 	for oldSkip := 0; oldSkip <= maxOldSkip; oldSkip++ {
 		for newSkip := 0; newSkip <= maxNewSkip; newSkip++ {
-			if dl.exceeded() {
+			if lim.exceeded() {
 				return oldStart, newStart, nil
 			}
 			if oldSkip == 0 && newSkip == 0 {
@@ -299,12 +288,12 @@ search:
 				continue
 			}
 
-			common, ok := commonPrefixLenAtDeadline(old, oldStart+oldSkip, oldEnd, new, newStart+newSkip, newEnd, dl)
+			common, ok := commonPrefixLenAtDeadline(old, oldStart+oldSkip, oldEnd, new, newStart+newSkip, newEnd, lim)
 			if !ok {
 				return oldStart, newStart, nil
 			}
-			if common >= minAnchorCommon {
-				if common >= minAnchorCommon*8 {
+			if common >= lim.frontAnchorMinCommon {
+				if common >= lim.frontAnchorMinCommon*8 {
 					best.oldSkip, best.newSkip, best.common, best.ok = oldSkip, newSkip, common, true
 					break search
 				}
@@ -358,12 +347,12 @@ func betterAnchor(common, oldSkip, newSkip, bestCommon, bestOldSkip, bestNewSkip
 func commonPrefixLenAtDeadline[T comparable](
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
-	dl deadline,
+	lim limits,
 ) (int, bool) {
 	maxLen := min(oldEnd-oldStart, newEnd-newStart)
 	matched := 0
 	for matched < maxLen {
-		if matched&(frontAnchorDeadlineCheckStep-1) == 0 && dl.exceeded() {
+		if matched&(frontAnchorDeadlineCheckStep-1) == 0 && lim.exceeded() {
 			return 0, false
 		}
 		if new[newStart+matched] != old[oldStart+matched] {

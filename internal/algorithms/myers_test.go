@@ -6,7 +6,16 @@ import (
 	"time"
 )
 
-var noDeadline = deadline{}
+// noDeadline is the production gate set with no time limit and no cancellation
+// — what fromContext yields for a background context.
+var noDeadline = fromContext(context.Background())
+
+// expired returns the production gates with a wall-clock deadline already past.
+func expired() limits {
+	lim := fromContext(context.Background())
+	lim.time = time.Now().Add(-time.Second)
+	return lim
+}
 
 // --- Ported Rust behavioral fixtures, judged by the oracle ---
 
@@ -231,11 +240,11 @@ func TestContextCancellationYieldsValidScript(t *testing.T) {
 // TestHeuristicDeadlineGuards asserts the heuristics do no work and emit
 // nothing once the deadline is already exceeded.
 func TestHeuristicDeadlineGuards(t *testing.T) {
-	past := deadline{time: time.Now().Add(-time.Second), ctx: context.Background()}
+	past := expired()
 
 	t.Run("small-side-exact bails", func(t *testing.T) {
-		old := make([]byte, smallSideExactMax)
-		new := make([]byte, smallSideExactMaxWork/smallSideExactMax)
+		old := make([]byte, defaultSmallSideExactMax)
+		new := make([]byte, defaultSmallSideExactMaxWork/defaultSmallSideExactMax)
 		for i := range old {
 			old[i] = 1
 		}
@@ -433,10 +442,10 @@ func TestHeuristicBoundaries(t *testing.T) {
 		return s
 	}
 	consts := []int{
-		smallSideExactMax,      // 64
-		smallSideExactMinLarge, // 512
-		disjointFastPathMinLen, // 512
-		96,                     // MIN_ANCHOR_COMMON
+		defaultSmallSideExactMax,      // 64
+		defaultSmallSideExactMinLarge, // 512
+		defaultDisjointFastPathMinLen, // 512
+		defaultFrontAnchorMinCommon,   // 96
 	}
 	for _, base := range consts {
 		for _, delta := range []int{-1, 0, 1} {

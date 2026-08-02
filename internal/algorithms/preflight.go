@@ -4,12 +4,6 @@ import (
 	"github.com/mahibulhaque/similar/internal/diffutil"
 )
 
-const (
-	disjointFastPathMinLen            = 512
-	disjointFastPathMinWork           = 128 * 1024
-	disjointFastPathDeadlineCheckStep = 1024
-)
-
 // maybeEmitDisjointFastPath short-circuits two large ranges that share no
 // common item to a straight delete+insert replacement, avoiding full search
 // cost. It reports whether it emitted a complete script (in which case Finish
@@ -21,18 +15,18 @@ func maybeEmitDisjointFastPath[T comparable](
 	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
-	dl deadline,
+	lim limits,
 ) (bool, error) {
-	if dl.exceeded() {
+	if lim.exceeded() {
 		return false, nil
 	}
 
 	oldLen := oldEnd - oldStart
 	newLen := newEnd - newStart
 
-	if oldLen < disjointFastPathMinLen ||
-		newLen < disjointFastPathMinLen ||
-		diffutil.SatMul(oldLen, newLen) < disjointFastPathMinWork {
+	if oldLen < lim.disjointFastPathMinLen ||
+		newLen < lim.disjointFastPathMinLen ||
+		diffutil.SatMul(oldLen, newLen) < lim.disjointFastPathMinWork {
 		return false, nil
 	}
 
@@ -41,7 +35,7 @@ func maybeEmitDisjointFastPath[T comparable](
 		return false, nil
 	}
 
-	common, ok := hasCommonItem(old, oldStart, oldEnd, new, newStart, newEnd, dl)
+	common, ok := hasCommonItem(old, oldStart, oldEnd, new, newStart, newEnd, lim)
 	if !ok {
 		// deadline hit while scanning
 		return false, nil
@@ -67,17 +61,17 @@ func maybeEmitDisjointFastPath[T comparable](
 func hasCommonItem[T comparable](
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
-	dl deadline,
+	lim limits,
 ) (common bool, ok bool) {
 	seen := make(map[T]struct{}, oldEnd-oldStart)
 	for i := oldStart; i < oldEnd; i++ {
-		if ((i-oldStart)&(disjointFastPathDeadlineCheckStep-1)) == 0 && dl.exceeded() {
+		if ((i-oldStart)&(disjointFastPathDeadlineCheckStep-1)) == 0 && lim.exceeded() {
 			return false, false
 		}
 		seen[old[i]] = struct{}{}
 	}
 	for i := newStart; i < newEnd; i++ {
-		if ((i-newStart)&(disjointFastPathDeadlineCheckStep-1)) == 0 && dl.exceeded() {
+		if ((i-newStart)&(disjointFastPathDeadlineCheckStep-1)) == 0 && lim.exceeded() {
 			return false, false
 		}
 		if _, found := seen[new[i]]; found {

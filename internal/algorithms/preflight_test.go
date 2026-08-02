@@ -2,7 +2,6 @@ package algorithms
 
 import (
 	"testing"
-	"time"
 )
 
 // disjointRanges builds two ranges of length n sharing no element, with
@@ -22,7 +21,7 @@ func disjointRanges(n int) (old, new []int) {
 // same one full search would produce, so no downstream test can tell the path
 // apart by its result; this is the only place that observes it directly.
 func TestDisjointFastPathEmitsWholeScript(t *testing.T) {
-	old, new := disjointRanges(disjointFastPathMinLen)
+	old, new := disjointRanges(defaultDisjointFastPathMinLen)
 
 	c := newCapture()
 	used, err := maybeEmitDisjointFastPath(c, old, 0, len(old), new, 0, len(new), noDeadline)
@@ -51,31 +50,31 @@ func TestDisjointFastPathEmitsWholeScript(t *testing.T) {
 // TestDisjointFastPathDeclines breaks exactly one precondition per case,
 // starting from ranges the fast path would otherwise accept.
 func TestDisjointFastPathDeclines(t *testing.T) {
-	n := disjointFastPathMinLen
+	n := defaultDisjointFastPathMinLen
 
 	cases := []struct {
 		name  string
-		build func() (old, new []int, dl deadline)
+		build func() (old, new []int, lim limits)
 	}{
-		{"below the length threshold", func() ([]int, []int, deadline) {
+		{"below the length threshold", func() ([]int, []int, limits) {
 			old, new := disjointRanges(n - 1)
 			return old, new, noDeadline
 		}},
-		{"deadline already exceeded", func() ([]int, []int, deadline) {
+		{"deadline already exceeded", func() ([]int, []int, limits) {
 			old, new := disjointRanges(n)
-			return old, new, deadline{time: time.Now().Add(-time.Second)}
+			return old, new, expired()
 		}},
-		{"ranges share an item", func() ([]int, []int, deadline) {
+		{"ranges share an item", func() ([]int, []int, limits) {
 			old, new := disjointRanges(n)
 			new[n/2] = old[n/2]
 			return old, new, noDeadline
 		}},
-		{"first items match", func() ([]int, []int, deadline) {
+		{"first items match", func() ([]int, []int, limits) {
 			old, new := disjointRanges(n)
 			new[0] = old[0]
 			return old, new, noDeadline
 		}},
-		{"last items match", func() ([]int, []int, deadline) {
+		{"last items match", func() ([]int, []int, limits) {
 			old, new := disjointRanges(n)
 			new[n-1] = old[n-1]
 			return old, new, noDeadline
@@ -84,9 +83,9 @@ func TestDisjointFastPathDeclines(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			old, new, dl := tc.build()
+			old, new, lim := tc.build()
 			c := newCapture()
-			used, err := maybeEmitDisjointFastPath(c, old, 0, len(old), new, 0, len(new), dl)
+			used, err := maybeEmitDisjointFastPath(c, old, 0, len(old), new, 0, len(new), lim)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -120,10 +119,9 @@ func TestHasCommonItem(t *testing.T) {
 
 func TestHasCommonItemDeadline(t *testing.T) {
 	old, new := disjointRanges(8)
-	expired := deadline{time: time.Now().Add(-time.Second)}
 
 	// ok is false when the scan bails before the answer is known.
-	if common, ok := hasCommonItem(old, 0, len(old), new, 0, len(new), expired); ok || common {
+	if common, ok := hasCommonItem(old, 0, len(old), new, 0, len(new), expired()); ok || common {
 		t.Fatalf("expired deadline: common = %v, ok = %v, want false, false", common, ok)
 	}
 }

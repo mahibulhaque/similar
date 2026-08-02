@@ -11,9 +11,9 @@ func maybeEmitSmallSideExact[T comparable](
 	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
-	dl deadline,
+	lim limits,
 ) (bool, error) {
-	if dl.exceeded() {
+	if lim.exceeded() {
 		return false, nil
 	}
 
@@ -24,28 +24,28 @@ func maybeEmitSmallSideExact[T comparable](
 	work := diffutil.SatMul(oldLen, newLen)
 
 	if small == 0 ||
-		small > smallSideExactMax ||
-		large < smallSideExactMinLarge ||
-		work > smallSideExactMaxWork {
+		small > lim.smallSideCap() ||
+		large < lim.smallSideExactMinLarge ||
+		work > lim.smallSideExactMaxWork {
 		return false, nil
 	}
 
 	if oldLen <= newLen {
-		return emitSmallOldExact(d, old, oldStart, oldEnd, new, newStart, newEnd, dl)
+		return emitSmallOldExact(d, old, oldStart, oldEnd, new, newStart, newEnd, lim)
 	}
-	return emitSmallNewExact(d, old, oldStart, oldEnd, new, newStart, newEnd, dl)
+	return emitSmallNewExact(d, old, oldStart, oldEnd, new, newStart, newEnd, lim)
 }
 
 // emitSmallOldExact handles the tiny-old / large-new shape. dp[i*width+j] is
 // the LCS length of old[i:] vs new[j:]; values are bounded by the small-side
-// cap (64), so uint8 suffices.
+// cap, which limits.smallSideCap holds at or below 255, so uint8 suffices.
 func emitSmallOldExact[T comparable](
 	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
-	dl deadline,
+	lim limits,
 ) (bool, error) {
-	if dl.exceeded() {
+	if lim.exceeded() {
 		return false, nil
 	}
 
@@ -55,13 +55,13 @@ func emitSmallOldExact[T comparable](
 
 	dp := make([]uint8, (n+1)*width)
 	for i := n - 1; i >= 0; i-- {
-		if dl.exceeded() {
+		if lim.exceeded() {
 			return false, nil
 		}
 		row := i * width
 		nextRow := (i + 1) * width
 		for j := m - 1; j >= 0; j-- {
-			if j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+			if j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 				return false, nil
 			}
 			if new[newStart+j] == old[oldStart+i] {
@@ -75,7 +75,7 @@ func emitSmallOldExact[T comparable](
 	emittedAny := false
 	i, j := 0, 0
 	for i < n && j < m {
-		if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+		if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 			return false, nil
 		}
 		row := i * width
@@ -85,7 +85,7 @@ func emitSmallOldExact[T comparable](
 		if new[newIdx] == old[oldIdx] && dp[row+j] == dp[(i+1)*width+j+1]+1 {
 			startI, startJ := i, j
 			for i < n && j < m {
-				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 					return false, nil
 				}
 				row := i * width
@@ -104,7 +104,7 @@ func emitSmallOldExact[T comparable](
 			startI := i
 			delNewIdx := newStart + j
 			for i < n {
-				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 					return false, nil
 				}
 				if j >= m {
@@ -129,7 +129,7 @@ func emitSmallOldExact[T comparable](
 			startJ := j
 			insOldIdx := oldStart + i
 			for j < m {
-				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 					return false, nil
 				}
 				if i >= n {
@@ -173,9 +173,9 @@ func emitSmallNewExact[T comparable](
 	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
-	dl deadline,
+	lim limits,
 ) (bool, error) {
-	if dl.exceeded() {
+	if lim.exceeded() {
 		return false, nil
 	}
 
@@ -185,13 +185,13 @@ func emitSmallNewExact[T comparable](
 
 	dp := make([]uint8, (m+1)*width)
 	for i := m - 1; i >= 0; i-- {
-		if dl.exceeded() {
+		if lim.exceeded() {
 			return false, nil
 		}
 		row := i * width
 		nextRow := (i + 1) * width
 		for j := n - 1; j >= 0; j-- {
-			if j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+			if j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 				return false, nil
 			}
 			if new[newStart+i] == old[oldStart+j] {
@@ -205,7 +205,7 @@ func emitSmallNewExact[T comparable](
 	emittedAny := false
 	i, j := 0, 0
 	for i < m && j < n {
-		if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+		if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 			return false, nil
 		}
 		row := i * width
@@ -215,7 +215,7 @@ func emitSmallNewExact[T comparable](
 		if new[newIdx] == old[oldIdx] && dp[row+j] == dp[(i+1)*width+j+1]+1 {
 			startI, startJ := i, j
 			for i < m && j < n {
-				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 					return false, nil
 				}
 				row := i * width
@@ -234,7 +234,7 @@ func emitSmallNewExact[T comparable](
 			startI := i
 			insOldIdx := oldStart + j
 			for i < m {
-				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 					return false, nil
 				}
 				if j >= n {
@@ -259,7 +259,7 @@ func emitSmallNewExact[T comparable](
 			startJ := j
 			delNewIdx := newStart + i
 			for j < n {
-				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && dl.exceeded() {
+				if !emittedAny && j&(smallSideDeadlineCheckInterval-1) == 0 && lim.exceeded() {
 					return false, nil
 				}
 				if i >= m {
