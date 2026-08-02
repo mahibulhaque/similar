@@ -181,7 +181,7 @@ func findMiddleSnake[T comparable](
 	dMax := maxD(n, m)
 	_ = vf.length() // capacity invariant: length() >= dMax by construction
 
-	for d := 0; d < dMax; d++ {
+	for d := range dMax {
 		if lim.exceeded() {
 			break
 		}

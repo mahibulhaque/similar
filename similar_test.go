@@ -142,7 +142,7 @@ func TestDiffRandomizedInvariants(t *testing.T) {
 	}
 	randInt := func(n int) int { return int(next() % uint64(n)) }
 
-	for iter := 0; iter < 2000; iter++ {
+	for iter := range 2000 {
 		alphabet := 2 + randInt(6)
 		oldLen := randInt(40)
 		newLen := randInt(40)
