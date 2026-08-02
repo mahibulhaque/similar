@@ -206,7 +206,7 @@ existing flat facade (everything under package `similar`) is preserved.
     mirroring the existing `example_test.go`, and golden fixtures (JSON of ops/changes
     with a `-update` flag, matching the existing `TestGolden`).
 - **Prior art:** table-driven tests with `t.Helper()` assertions and no third-party deps
-  (repo-wide); the oracle/self-check pattern in `internal/algorithms/oracle_test.go`;
+  (repo-wide); the oracle/self-check pattern in `internal/algorithms/harness_test.go`;
   golden fixtures in `testdata/*.golden`; runnable examples in `example_test.go`;
   fixed-seed determinism for any randomized checks.
 - **Optional fuzzing:** extend the existing `testing.F` pattern to a
