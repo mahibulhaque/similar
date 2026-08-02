@@ -130,8 +130,6 @@ func TestSmallSideExactVariants(t *testing.T) {
 				if op.OldIndex == 500 && op.NewIndex == 0 && op.OldLen == 1 {
 					sawExpectedEqual = true
 				}
-			case tagReplace:
-				t.Fatal("capture hook must not emit replace")
 			}
 		}
 		if insertCount != 0 {
@@ -478,7 +476,7 @@ func TestSubRangeDiff(t *testing.T) {
 		switch op.Tag {
 		case tagEqual:
 			out = append(out, old[op.OldIndex:op.OldIndex+op.OldLen]...)
-		case tagInsert, tagReplace:
+		case tagInsert:
 			out = append(out, new[op.NewIndex:op.NewIndex+op.NewLen]...)
 		}
 	}

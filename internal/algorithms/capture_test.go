@@ -15,7 +15,6 @@ const (
 	tagEqual opTag = iota
 	tagDelete
 	tagInsert
-	tagReplace
 )
 
 // String keeps failure messages readable, naming the tag rather than its ordinal.
@@ -27,8 +26,6 @@ func (t opTag) String() string {
 		return "delete"
 	case tagInsert:
 		return "insert"
-	case tagReplace:
-		return "replace"
 	default:
 		return fmt.Sprintf("opTag(%d)", int(t))
 	}
@@ -76,22 +73,16 @@ func (c *capture) Insert(oldIndex, newIndex, newLen int) error {
 	return nil
 }
 
-func (c *capture) Replace(oldIndex, oldLen, newIndex, newLen int) error {
-	c.ops = append(c.ops, capturedOp{tagReplace, oldIndex, newIndex, oldLen, newLen})
-	return nil
-}
-
 func (c *capture) Finish() error { return nil }
 
 // noopHook is an embeddable diffHook whose callbacks all return nil, so a test
 // hook can override only the callback it cares about.
 type noopHook struct{}
 
-func (noopHook) Equal(oldIndex, newIndex, length int) error           { return nil }
-func (noopHook) Delete(oldIndex, oldLen, newIndex int) error          { return nil }
-func (noopHook) Insert(oldIndex, newIndex, newLen int) error          { return nil }
-func (noopHook) Replace(oldIndex, oldLen, newIndex, newLen int) error { return nil }
-func (noopHook) Finish() error                                        { return nil }
+func (noopHook) Equal(oldIndex, newIndex, length int) error  { return nil }
+func (noopHook) Delete(oldIndex, oldLen, newIndex int) error { return nil }
+func (noopHook) Insert(oldIndex, newIndex, newLen int) error { return nil }
+func (noopHook) Finish() error                               { return nil }
 
 var (
 	_ diffHook = (*capture)(nil)

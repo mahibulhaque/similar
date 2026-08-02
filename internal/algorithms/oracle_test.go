@@ -39,8 +39,6 @@ func reconstruct[T comparable](old, new []T, ops []capturedOp) []T {
 			// nothing produced
 		case tagInsert:
 			out = append(out, new[op.NewIndex:op.NewIndex+op.NewLen]...)
-		case tagReplace:
-			out = append(out, new[op.NewIndex:op.NewIndex+op.NewLen]...)
 		}
 	}
 	return out
@@ -55,15 +53,13 @@ func editCost(ops []capturedOp) int {
 			cost += op.OldLen
 		case tagInsert:
 			cost += op.NewLen
-		case tagReplace:
-			cost += op.OldLen + op.NewLen
 		}
 	}
 	return cost
 }
 
 // captureMyers runs the raw Myers core over the whole slices with a bare
-// Capture hook (equal/delete/insert only, no Replace/Compact).
+// Capture hook — equal/delete/insert only, with no Compact stage above it.
 func captureMyers[T comparable](old, new []T) []capturedOp {
 	c := newCapture()
 	if err := Diff(c, old, 0, len(old), new, 0, len(new)); err != nil {
@@ -104,14 +100,14 @@ func checkContiguous[T comparable](t *testing.T, old, new []T, ops []capturedOp)
 		os, oe := op.OldRange()
 		ns, ne := op.NewRange()
 		switch op.Tag {
-		case tagEqual, tagDelete, tagReplace:
+		case tagEqual, tagDelete:
 			if os != oldCursor {
 				t.Fatalf("op %d (%v): old start %d, expected %d", i, op.Tag, os, oldCursor)
 			}
 			oldCursor = oe
 		}
 		switch op.Tag {
-		case tagEqual, tagInsert, tagReplace:
+		case tagEqual, tagInsert:
 			if ns != newCursor {
 				t.Fatalf("op %d (%v): new start %d, expected %d", i, op.Tag, ns, newCursor)
 			}

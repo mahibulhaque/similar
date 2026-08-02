@@ -319,19 +319,14 @@ search:
 		return oldStart, newStart, nil
 	}
 
-	switch {
-	case best.oldSkip == 0 && best.newSkip == 0:
-		// no anchor skip
-	case best.oldSkip == 0:
+	// The search skips the (0,0) candidate and every two-sided one, so a
+	// recorded best always has exactly one skip zero and peels a single side.
+	if best.oldSkip == 0 {
 		if err := d.Insert(oldStart, newStart, best.newSkip); err != nil {
 			return oldStart, newStart, err
 		}
-	case best.newSkip == 0:
+	} else {
 		if err := d.Delete(oldStart, best.oldSkip, newStart); err != nil {
-			return oldStart, newStart, err
-		}
-	default:
-		if err := d.Replace(oldStart, best.oldSkip, newStart, best.newSkip); err != nil {
 			return oldStart, newStart, err
 		}
 	}
@@ -343,7 +338,8 @@ search:
 }
 
 // betterAnchor implements the crate's candidate ordering: prefer a longer
-// common run, then a smaller replace span, then larger old/new skips.
+// common run, then a shorter skip, then larger old/new skips. Candidates are
+// one-sided, so the skip compared is whichever of the two is non-zero.
 func betterAnchor(common, oldSkip, newSkip, bestCommon, bestOldSkip, bestNewSkip int) bool {
 	if common != bestCommon {
 		return common > bestCommon
