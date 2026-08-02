@@ -3,9 +3,11 @@ package similar_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/mahibulhaque/similar"
@@ -175,6 +177,101 @@ func TestDiffRandomizedInvariants(t *testing.T) {
 		if oldCursor != len(old) || newCursor != len(new) {
 			t.Fatalf("iter %d: incomplete coverage (%d,%d)", iter, oldCursor, newCursor)
 		}
+	}
+}
+
+// --- The option seam and the hook entry points ---
+
+func TestDiffHonorsOptions(t *testing.T) {
+	old := []string{"a", "b", "c", "d"}
+	new := []string{"a", "x", "y", "d"}
+
+	t.Run("no options matches an explicit Myers background", func(t *testing.T) {
+		bare := similar.Diff(old, new)
+		spelt := similar.Diff(old, new,
+			similar.WithAlgorithm(similar.Myers),
+			similar.WithContext(context.Background()),
+		)
+		if !reflect.DeepEqual(bare, spelt) {
+			t.Fatalf("defaults = %v, spelt out = %v", bare, spelt)
+		}
+	})
+
+	t.Run("a cancelled context yields a valid script, not an error", func(t *testing.T) {
+		a := make([]int, 400)
+		b := make([]int, 400)
+		for i := range a {
+			a[i] = i
+			b[i] = i * 7 // fully divergent middle
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		ops := similar.Diff(a, b, similar.WithContext(ctx))
+		if got := reconstruct(a, b, ops); !eq(got, b) {
+			t.Fatal("cancelled reconstruct did not rebuild new")
+		}
+	})
+
+	t.Run("a nil option is ignored", func(t *testing.T) {
+		if ops := similar.Diff(old, new, nil); len(ops) == 0 {
+			t.Fatal("ops = none, want a diff")
+		}
+	})
+}
+
+func TestDiffToStreamsToAHook(t *testing.T) {
+	old := []string{"a", "b", "c", "d"}
+	new := []string{"a", "x", "y", "d"}
+
+	capture := similar.NewCapture()
+	if err := similar.DiffTo(capture, old, new); err != nil {
+		t.Fatalf("DiffTo: %v", err)
+	}
+
+	// A bare hook sees the raw script: no Compact or Replace stage sits above
+	// it, so the middle arrives as a Delete and an Insert rather than coalesced.
+	if got := reconstruct(old, new, capture.Ops()); !eq(got, new) {
+		t.Fatalf("hook script rebuilt %v, want %v", got, new)
+	}
+	for _, op := range capture.Ops() {
+		if op.Tag == similar.Replace {
+			t.Fatalf("bare hook saw a Replace: %v", capture.Ops())
+		}
+	}
+}
+
+// errHook fails on its first Equal, standing in for any failing callback.
+type errHook struct {
+	similar.NoopHook
+	err error
+}
+
+func (h *errHook) Equal(oldIndex, newIndex, length int) error { return h.err }
+
+func TestDiffToPropagatesHookError(t *testing.T) {
+	boom := errors.New("boom")
+	err := similar.DiffTo(&errHook{err: boom}, []int{1, 2}, []int{1, 2})
+	if !errors.Is(err, boom) {
+		t.Fatalf("err = %v, want %v", err, boom)
+	}
+}
+
+// TestDiffRangeToReportsAbsoluteIndices is the reason the sub-range form exists:
+// slicing the inputs and calling DiffTo would report indices relative to the
+// window, and the caller would have to add the offsets back.
+func TestDiffRangeToReportsAbsoluteIndices(t *testing.T) {
+	old := []int{9, 1, 2, 3, 9}
+	new := []int{8, 1, 2, 3, 8}
+
+	capture := similar.NewCapture()
+	if err := similar.DiffRangeTo(capture, old, 1, 4, new, 1, 4); err != nil {
+		t.Fatalf("DiffRangeTo: %v", err)
+	}
+
+	want := []similar.DiffOp{{Tag: similar.Equal, OldIndex: 1, NewIndex: 1, OldLen: 3, NewLen: 3}}
+	if !reflect.DeepEqual(capture.Ops(), want) {
+		t.Fatalf("ops = %v, want %v", capture.Ops(), want)
 	}
 }
 

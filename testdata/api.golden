@@ -68,11 +68,13 @@ func DiffDeadline[T comparable](ctx context.Context, alg Algorithm, old, new []T
 func DiffHookDeadline[T comparable](ctx context.Context, alg Algorithm, hook DiffHook, old, new []T) error
 func DiffLines(old, new string, opts ...Option) *TextDiff
 func DiffRangeHookDeadline[T comparable](ctx context.Context, alg Algorithm, hook DiffHook, old []T, oldStart, oldEnd int, new []T, newStart, newEnd int) error
+func DiffRangeTo[T comparable](hook DiffHook, old []T, oldStart, oldEnd int, new []T, newStart, newEnd int, opts ...Option) error
 func DiffRatio(ops []DiffOp, oldLen, newLen int) float64
 func DiffSlices(old, new []string, nl NewlinePolicy, opts ...Option) *TextDiff
 func DiffText(old, new string, tok Tokenizer, opts ...Option) *TextDiff
+func DiffTo[T comparable](hook DiffHook, old, new []T, opts ...Option) error
 func DiffWords(old, new string, opts ...Option) *TextDiff
-func Diff[T comparable](old, new []T) []DiffOp
+func Diff[T comparable](old, new []T, opts ...Option) []DiffOp
 func GetCloseMatches(word string, possibilities []string, n int, cutoff float64) []string
 func GroupDiffOps(ops []DiffOp, n int) [][]DiffOp
 func NewCapture() *Capture
