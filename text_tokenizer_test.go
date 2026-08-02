@@ -190,13 +190,12 @@ func TestNewlineTerminatedDecorator(t *testing.T) {
 	})
 }
 
-// The tokenizer supplies the default only; WithNewlineTerminated still wins in
-// both directions.
-func TestWithNewlineTerminatedOverridesTokenizer(t *testing.T) {
-	if d := DiffText("a\n", "a\n", Lines, WithNewlineTerminated(false)); d.NewlineTerminated() {
-		t.Error("Lines + WithNewlineTerminated(false): got true, want false")
+// The tokenizer is the only source of the flag; wrapping it is what overrides.
+func TestNewlineTerminatedOverridesTokenizer(t *testing.T) {
+	if d := DiffText("a\n", "a\n", NewlineTerminated(Lines, false)); d.NewlineTerminated() {
+		t.Error("Lines wrapped false: got true, want false")
 	}
-	if d := DiffText("a", "a", Words, WithNewlineTerminated(true)); !d.NewlineTerminated() {
-		t.Error("Words + WithNewlineTerminated(true): got false, want true")
+	if d := DiffText("a", "a", NewlineTerminated(Words, true)); !d.NewlineTerminated() {
+		t.Error("Words wrapped true: got false, want true")
 	}
 }

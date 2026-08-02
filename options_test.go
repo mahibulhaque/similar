@@ -21,7 +21,7 @@ func TestWithAlgorithmRejectsUnknown(t *testing.T) {
 		if r == nil {
 			t.Fatal("WithAlgorithm(99): want panic, got none")
 		}
-		if want := "text: unknown algorithm 99"; r != want {
+		if want := "similar: unknown algorithm 99"; r != want {
 			t.Fatalf("panic = %v, want %q", r, want)
 		}
 	}()
@@ -36,8 +36,18 @@ func TestDefaultsAreMyersAndBackground(t *testing.T) {
 	if c.ctx != context.Background() {
 		t.Fatalf("ctx = %v, want background", c.ctx)
 	}
-	if c.newlineTerminated != nil {
-		t.Fatal("newlineTerminated = set, want unset")
+}
+
+// The newline-terminated flag is not an Option. Every text entry point takes it
+// from its Tokenizer, and DiffSlices — which has none — takes it as an argument.
+func TestNewlinePolicyComesFromTheCaller(t *testing.T) {
+	toks := []string{"a\n", "b\n"}
+
+	if d := DiffSlices(toks, toks, PlainTokens); d.NewlineTerminated() {
+		t.Error("PlainTokens: got true, want false")
+	}
+	if d := DiffSlices(toks, toks, NewlineTerminatedTokens); !d.NewlineTerminated() {
+		t.Error("NewlineTerminatedTokens: got false, want true")
 	}
 }
 

@@ -89,7 +89,7 @@ func TestSliceBounds(t *testing.T) {
 // A diff built from tokens the caller supplied remaps against those tokens, so
 // no original string has to be threaded back in.
 func TestSlicesFromCallerTokens(t *testing.T) {
-	d := DiffSlices(tokenizeWords("foo bar baz"), tokenizeWords("foo bor baz"))
+	d := DiffSlices(tokenizeWords("foo bar baz"), tokenizeWords("foo bor baz"), PlainTokens)
 
 	if s, ok := d.SliceNew(2, 3); !ok || s != "bor" {
 		t.Errorf("SliceNew(2,3) = (%q,%v), want (\"bor\",true)", s, ok)

@@ -27,7 +27,7 @@ type TextDiff struct {
 
 // DiffText diffs old and new split by tok. Pass one of Lines, Words, Chars, or
 // LinesAndNewlines, or any Tokenizer of your own. The newline-terminated flag
-// defaults to what tok reports; WithNewlineTerminated overrides it.
+// is what tok reports; wrap tok in NewlineTerminated to change it.
 //
 // It panics if tok is nil: this returns a *TextDiff and no error, so an
 // unusable argument is rejected where the caller can see which one was wrong.
@@ -55,22 +55,31 @@ func DiffChars(old, new string, opts ...Option) *TextDiff {
 	return DiffText(old, new, Chars, opts...)
 }
 
+// NewlinePolicy states whether a slice of tokens is newline-terminated. Every
+// other entry point learns this from its Tokenizer; DiffSlices is handed tokens
+// with no tokenizer attached, so only the caller can say.
+type NewlinePolicy bool
+
+const (
+	// PlainTokens marks tokens that are not newline-terminated.
+	PlainTokens NewlinePolicy = false
+	// NewlineTerminatedTokens marks tokens that carry their trailing newline,
+	// as the tokens Lines produces do.
+	NewlineTerminatedTokens NewlinePolicy = true
+)
+
 // DiffSlices diffs two already-tokenized slices. The slices are copied, so the
 // caller may reuse them afterwards.
 //
 // The remapping methods reconstruct their source text by joining these tokens,
 // so if the tokens do not account for every byte of some original string, the
 // joined tokens — not that string — are what gets remapped.
-func DiffSlices(old, new []string, opts ...Option) *TextDiff {
-	return build(cloneStrings(old), cloneStrings(new), false, opts)
+func DiffSlices(old, new []string, nl NewlinePolicy, opts ...Option) *TextDiff {
+	return build(cloneStrings(old), cloneStrings(new), bool(nl), opts)
 }
 
-func build(oldToks, newToks []string, newlineDefault bool, opts []Option) *TextDiff {
+func build(oldToks, newToks []string, newlineTerminated bool, opts []Option) *TextDiff {
 	c := resolve(opts)
-	newline := newlineDefault
-	if c.newlineTerminated != nil {
-		newline = *c.newlineTerminated
-	}
 	// WithAlgorithm rejects an unknown value when the option is applied, and the
 	// standard hook stack never fails, so Capture cannot error here.
 	ops, err := captureOps(c.ctx, c.algorithm, oldToks, newToks)
@@ -82,7 +91,7 @@ func build(oldToks, newToks []string, newlineDefault bool, opts []Option) *TextD
 		old:               oldToks,
 		new:               newToks,
 		ops:               ops,
-		newlineTerminated: newline,
+		newlineTerminated: newlineTerminated,
 		algorithm:         c.algorithm,
 	}
 }

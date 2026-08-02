@@ -50,7 +50,7 @@ func TestDiffCharsOps(t *testing.T) {
 func TestDiffSlicesOps(t *testing.T) {
 	old := []string{"foo", "bar", "baz"}
 	new := []string{"foo", "BAR", "baz"}
-	d := DiffSlices(old, new)
+	d := DiffSlices(old, new, PlainTokens)
 	want := []DiffOp{
 		{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 1, NewLen: 1},
 		{Tag: Replace, OldIndex: 1, NewIndex: 1, OldLen: 1, NewLen: 1},

@@ -120,7 +120,20 @@ func (commaTokenizer) NewlineTerminated() bool { return false }
 diff := similar.DiffText("a,b,c", "a,B,c", commaTokenizer{})
 ```
 
-`DiffSlices` remains the entry point for input you tokenized yourself.
+A tokenizer also reports whether its tokens are newline-terminated, which is
+what downstream renderers consult about trailing newlines. `NewlineTerminated`
+wraps a tokenizer to change that answer without changing how it splits:
+
+```go
+diff := similar.DiffText(old, new, similar.NewlineTerminated(similar.Words, true))
+```
+
+`DiffSlices` is the entry point for input you tokenized yourself. It has no
+tokenizer to ask, so it takes the policy directly:
+
+```go
+diff := similar.DiffSlices(oldToks, newToks, similar.PlainTokens)
+```
 
 Find the closest matches to a word (difflib-style):
 

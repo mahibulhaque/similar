@@ -22,7 +22,7 @@ func GetCloseMatches(word string, possibilities []string, n int, cutoff float64)
 		if upperSeqRatio(seq1, seq2) < cutoff || quick.calc(seq2) < cutoff {
 			continue
 		}
-		ratio := DiffSlices(seq1, seq2).Ratio()
+		ratio := DiffSlices(seq1, seq2, PlainTokens).Ratio()
 		if ratio >= cutoff {
 			matches = append(matches, scored{ratio: ratio, word: p})
 		}
