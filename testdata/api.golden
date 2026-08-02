@@ -75,6 +75,7 @@ func GetCloseMatches(word string, possibilities []string, n int, cutoff float64)
 func GroupDiffOps(ops []DiffOp, n int) [][]DiffOp
 func NewCapture() *Capture
 func NewReplaceHook(d DiffHook) *ReplaceHook
+func NewlineTerminated(tok Tokenizer, yes bool) Tokenizer
 func WithAlgorithm(alg Algorithm) Option
 func WithContext(ctx context.Context) Option
 func WithNewlineTerminated(yes bool) Option

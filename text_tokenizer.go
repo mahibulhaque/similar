@@ -12,8 +12,10 @@ type Tokenizer interface {
 	// rewrites bytes, the joined tokens — not s — are what gets remapped.
 	Split(s string) []string
 
-	// NewlineTerminated reports the default for a diff's newline-terminated
-	// flag when built with this tokenizer. WithNewlineTerminated overrides it.
+	// NewlineTerminated reports whether a diff built with this tokenizer has
+	// newline-terminated tokens. The flag controls how downstream renderers
+	// treat trailing newlines; wrap a tokenizer in NewlineTerminated to change
+	// the answer without changing how it splits.
 	NewlineTerminated() bool
 }
 
@@ -49,3 +51,32 @@ var (
 	// being attached to the preceding line.
 	LinesAndNewlines Tokenizer = tokenizer{tokenizeLinesAndNewlines, false}
 )
+
+// NewlineTerminated returns tok with its newline-terminated answer replaced by
+// yes. Splitting is unchanged: the returned tokenizer defers to tok for that.
+//
+// The flag is a property of the tokens, so it belongs to whatever produced
+// them. Use this to state it for a tokenizer whose default does not suit:
+//
+//	similar.DiffText(old, new, similar.NewlineTerminated(similar.Words, true))
+//
+// It panics if tok is nil, matching DiffText, which cannot report the error.
+func NewlineTerminated(tok Tokenizer, yes bool) Tokenizer {
+	if tok == nil {
+		panic("similar: nil tokenizer")
+	}
+	return newlineTerminated{tok: tok, yes: yes}
+}
+
+// newlineTerminated overrides only the newline-terminated answer of the
+// tokenizer it wraps.
+type newlineTerminated struct {
+	tok Tokenizer
+	yes bool
+}
+
+func (n newlineTerminated) Split(s string) []string { return n.tok.Split(s) }
+
+func (n newlineTerminated) NewlineTerminated() bool { return n.yes }
+
+var _ Tokenizer = newlineTerminated{}

@@ -138,6 +138,58 @@ func TestDiffTextNilTokenizerPanics(t *testing.T) {
 	DiffText("a", "b", nil)
 }
 
+func TestNewlineTerminatedDecorator(t *testing.T) {
+	t.Run("overrides the answer in both directions", func(t *testing.T) {
+		if NewlineTerminated(Lines, false).NewlineTerminated() {
+			t.Error("Lines forced false: got true")
+		}
+		if !NewlineTerminated(Words, true).NewlineTerminated() {
+			t.Error("Words forced true: got false")
+		}
+	})
+
+	t.Run("leaves splitting alone", func(t *testing.T) {
+		const s = "one\ntwo\n"
+		got := NewlineTerminated(Lines, false).Split(s)
+		want := Lines.Split(s)
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("Split = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("reaches the diff it is built with", func(t *testing.T) {
+		if d := DiffText("a\n", "a\n", NewlineTerminated(Lines, false)); d.NewlineTerminated() {
+			t.Error("Lines forced false: diff reports true")
+		}
+		if d := DiffText("a", "a", NewlineTerminated(Words, true)); !d.NewlineTerminated() {
+			t.Error("Words forced true: diff reports false")
+		}
+	})
+
+	t.Run("wraps a caller-supplied tokenizer", func(t *testing.T) {
+		d := DiffText("a,b", "a,b", NewlineTerminated(commaTokenizer{}, true))
+		if !d.NewlineTerminated() {
+			t.Error("commaTokenizer forced true: diff reports false")
+		}
+		if got, want := slices.Collect(d.OldTokens()), []string{"a", ",", "b"}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("old tokens = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("nil tokenizer panics", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatal("NewlineTerminated(nil, true): want panic, got none")
+			}
+			if got, want := r.(string), "similar: nil tokenizer"; got != want {
+				t.Fatalf("panic = %q, want %q", got, want)
+			}
+		}()
+		NewlineTerminated(nil, true)
+	})
+}
+
 // The tokenizer supplies the default only; WithNewlineTerminated still wins in
 // both directions.
 func TestWithNewlineTerminatedOverridesTokenizer(t *testing.T) {
