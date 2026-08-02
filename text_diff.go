@@ -80,12 +80,7 @@ func DiffSlices(old, new []string, nl NewlinePolicy, opts ...Option) *TextDiff {
 
 func build(oldToks, newToks []string, newlineTerminated bool, opts []Option) *TextDiff {
 	c := resolve(opts)
-	// WithAlgorithm rejects an unknown value when the option is applied, and the
-	// standard hook stack never fails, so Capture cannot error here.
-	ops, err := captureOps(c.ctx, c.algorithm, oldToks, newToks)
-	if err != nil {
-		panic("text: " + err.Error())
-	}
+	ops := captureOps(c.ctx, c.algorithm, oldToks, newToks)
 
 	return &TextDiff{
 		old:               oldToks,

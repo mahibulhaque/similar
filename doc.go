@@ -28,17 +28,26 @@
 //
 //	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 //	defer cancel()
-//	ops, err := similar.DiffDeadline(ctx, similar.Myers, old, new)
+//	ops := similar.Diff(old, new, similar.WithContext(ctx))
 //
 // A deadline hit yields a valid but possibly approximate script; it is not an
-// error. The no-deadline path always produces the exact minimal script.
+// error. The no-deadline path always produces the exact minimal script. This is
+// why [Diff] returns no error — there is no failure it can encounter.
+//
+// # Options
+//
+// [WithContext] and [WithAlgorithm] are the whole set, and both apply to every
+// entry point here and in the text layer. Anything that suits only one is an
+// argument to that function instead: a [DiffHook] and a sub-range change what
+// is returned rather than how it is computed, so they belong to [DiffTo] and
+// [DiffRangeTo].
 //
 // # Algorithm selection
 //
 // [Algorithm] selects the implementation; Myers is the only value in this
-// release. Every entry point routes through one dispatch point, so an unknown
-// value is rejected consistently: the functions that return an error report it
-// there, while [CaptureDiff] and [WithAlgorithm], which cannot, panic.
+// release. [WithAlgorithm] is the single point at which a value is checked, and
+// it panics on an unknown one where the caller passes it — the entry points
+// return no error for it because they cannot be reached with one.
 //
 // # Streaming with a hook
 //

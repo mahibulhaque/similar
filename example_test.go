@@ -22,26 +22,16 @@ func ExampleDiff() {
 	// replace old[2:3] new[2:3]
 }
 
-func ExampleCaptureDiff() {
-	old := []int{1, 2, 3, 4, 5}
-	new := []int{1, 2, 3, 4, 7}
-
-	ops := similar.CaptureDiff(similar.Myers, old, new)
-	fmt.Println(len(ops), "ops")
-	fmt.Println(ops[len(ops)-1].Tag)
-	// Output:
-	// 2 ops
-	// replace
-}
-
-func ExampleDiffDeadline() {
+func ExampleDiff_options() {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	ops, err := similar.DiffDeadline(ctx, similar.Myers, []rune("kitten"), []rune("sitting"))
-	if err != nil {
-		panic(err)
-	}
+	// A deadline bounds the work. If it expires the script is still valid, only
+	// approximate, so there is nothing to check.
+	ops := similar.Diff([]rune("kitten"), []rune("sitting"),
+		similar.WithContext(ctx),
+		similar.WithAlgorithm(similar.Myers),
+	)
 	fmt.Println(len(ops) > 0)
 	// Output:
 	// true
@@ -57,14 +47,30 @@ func (h *countHook) Equal(int, int, int) error  { h.equal++; return nil }
 func (h *countHook) Delete(int, int, int) error { h.changed++; return nil }
 func (h *countHook) Insert(int, int, int) error { h.changed++; return nil }
 
-func ExampleDiffHookDeadline() {
+func ExampleDiffTo() {
 	h := &countHook{}
-	err := similar.DiffHookDeadline(context.Background(), similar.Myers, h,
-		[]int{1, 2, 3, 4}, []int{1, 9, 3, 4})
-	if err != nil {
+	if err := similar.DiffTo(h, []int{1, 2, 3, 4}, []int{1, 9, 3, 4}); err != nil {
 		panic(err)
 	}
 	fmt.Println("equal runs:", h.equal, "changes:", h.changed)
 	// Output:
 	// equal runs: 2 changes: 2
+}
+
+func ExampleDiffRangeTo() {
+	old := []int{9, 1, 2, 3, 9}
+	new := []int{8, 1, 2, 3, 8}
+
+	// Diff the middles only. Indices reported to the hook stay absolute, which
+	// is what slicing the inputs would cost you.
+	capture := similar.NewCapture()
+	if err := similar.DiffRangeTo(capture, old, 1, 4, new, 1, 4); err != nil {
+		panic(err)
+	}
+	for _, op := range capture.Ops() {
+		os, oe := op.OldRange()
+		fmt.Printf("%s old[%d:%d]\n", op.Tag, os, oe)
+	}
+	// Output:
+	// equal old[1:4]
 }

@@ -49,8 +49,12 @@ reconstructs the new sequence exactly.
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 defer cancel()
-ops, err := similar.DiffDeadline(ctx, similar.Myers, old, new)
+ops := similar.Diff(old, new, similar.WithContext(ctx))
 ```
+
+A deadline hit yields a valid but possibly approximate script — not an error,
+which is why `Diff` returns none. `WithContext` and `WithAlgorithm` are the whole
+option set, and both apply to the text entry points too.
 
 ### Streaming with a hook
 
@@ -64,11 +68,16 @@ func (printer) Delete(oldIndex, oldLen, newIndex int) error {
     return nil
 }
 
-similar.DiffHookDeadline(context.Background(), similar.Myers, printer{}, old, new)
+similar.DiffTo(printer{}, old, new)
 ```
 
+`DiffRangeTo` does the same over a window of each sequence, reporting absolute
+indices. A hook and a sub-range are arguments rather than options because they
+change what you get back, not how it is computed.
+
 Wrap a hook in `NewReplaceHook` to coalesce adjacent delete+insert into
-`Replace` operations.
+`Replace` operations. Nothing else produces one: the Myers core emits only
+equal, delete and insert.
 
 ### Text diffing
 

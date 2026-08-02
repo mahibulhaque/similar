@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/mahibulhaque/similar"
 )
@@ -111,19 +112,17 @@ func TestDiffStringsReplaceCoalesced(t *testing.T) {
 	}
 }
 
-func TestDiffDeadlineExceededStillValid(t *testing.T) {
+func TestDeadlineExceededStillValid(t *testing.T) {
 	a := make([]int, 400)
 	b := make([]int, 400)
 	for i := range a {
 		a[i] = i
 		b[i] = i * 7 // fully divergent middle
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	ops, err := similar.DiffDeadline(ctx, similar.Myers, a, b)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+
+	ops := similar.Diff(a, b, similar.WithContext(ctx))
 	if got := reconstruct(a, b, ops); !eq(got, b) {
 		t.Fatal("deadline-hit reconstruct did not rebuild new")
 	}
@@ -289,7 +288,7 @@ func TestGolden(t *testing.T) {
 	}
 	for _, fx := range fixtures {
 		t.Run(fx.name, func(t *testing.T) {
-			ops := similar.CaptureDiff(similar.Myers, fx.old, fx.new)
+			ops := similar.Diff(fx.old, fx.new, similar.WithAlgorithm(similar.Myers))
 			got, err := json.MarshalIndent(ops, "", "  ")
 			if err != nil {
 				t.Fatal(err)

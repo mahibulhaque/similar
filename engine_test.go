@@ -14,10 +14,7 @@ func TestCaptureOpsRunsStandardHookStack(t *testing.T) {
 	old := []string{"a", "b", "c", "d"}
 	new := []string{"a", "x", "y", "d"}
 
-	ops, err := captureOps(context.Background(), Myers, old, new)
-	if err != nil {
-		t.Fatalf("Capture: %v", err)
-	}
+	ops := captureOps(context.Background(), Myers, old, new)
 
 	// Replace is only produced by the Replace hook, so seeing one here proves
 	// the delete+insert pair was coalesced rather than passed straight through.
@@ -33,10 +30,7 @@ func TestCaptureOpsRunsStandardHookStack(t *testing.T) {
 
 func TestCaptureOpsIdenticalSequences(t *testing.T) {
 	s := []int{1, 2, 3}
-	ops, err := captureOps(context.Background(), Myers, s, s)
-	if err != nil {
-		t.Fatalf("Capture: %v", err)
-	}
+	ops := captureOps(context.Background(), Myers, s, s)
 	want := []DiffOp{{Tag: Equal, OldIndex: 0, NewIndex: 0, OldLen: 3, NewLen: 3}}
 	if !reflect.DeepEqual(ops, want) {
 		t.Fatalf("ops = %v, want %v", ops, want)
@@ -44,33 +38,26 @@ func TestCaptureOpsIdenticalSequences(t *testing.T) {
 }
 
 func TestCaptureOpsEmptyInputs(t *testing.T) {
-	ops, err := captureOps(context.Background(), Myers, []int{}, []int{})
-	if err != nil {
-		t.Fatalf("Capture: %v", err)
-	}
+	ops := captureOps(context.Background(), Myers, []int{}, []int{})
 	if len(ops) != 0 {
 		t.Fatalf("ops = %v, want none", ops)
 	}
 }
 
-func TestCaptureOpsUnknownAlgorithm(t *testing.T) {
-	ops, err := captureOps(context.Background(), unknownAlg, []int{1}, []int{2})
-	if err == nil {
-		t.Fatal("Capture with unknown algorithm: want error, got nil")
-	}
-	if ops != nil {
-		t.Fatalf("ops = %v, want nil on error", ops)
-	}
-	if want := "similar: unknown algorithm 99"; err.Error() != want {
-		t.Fatalf("err = %q, want %q", err, want)
-	}
-}
-
-func TestRunDispatchUnknownAlgorithm(t *testing.T) {
-	err := run(context.Background(), unknownAlg, NewCapture(), []int{1}, 0, 1, []int{2}, 0, 1)
-	if err == nil {
-		t.Fatal("Run with unknown algorithm: want error, got nil")
-	}
+// An unknown algorithm cannot arrive through WithAlgorithm, which rejects one
+// where it is passed. Reaching the dispatch with one is a broken invariant, so
+// it panics rather than returning an error no caller could have acted on.
+func TestRunDispatchPanicsOnUnknownAlgorithm(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("run with unknown algorithm: want panic, got none")
+		}
+		if want := "similar: unknown algorithm 99"; r != want {
+			t.Fatalf("panic = %v, want %q", r, want)
+		}
+	}()
+	_ = run(context.Background(), unknownAlg, NewCapture(), []int{1}, 0, 1, []int{2}, 0, 1)
 }
 
 func TestRunDispatchDiffsSubRanges(t *testing.T) {
@@ -117,10 +104,7 @@ func TestCaptureOpsCancelledContextIsNotAnError(t *testing.T) {
 	}
 
 	// An expired deadline yields an approximate but valid script, not an error.
-	ops, err := captureOps(ctx, Myers, old, new)
-	if err != nil {
-		t.Fatalf("Capture with expired deadline: %v", err)
-	}
+	ops := captureOps(ctx, Myers, old, new)
 	if len(ops) == 0 {
 		t.Fatal("ops = none, want a valid (possibly approximate) script")
 	}

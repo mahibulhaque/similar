@@ -25,10 +25,14 @@ func (a Algorithm) String() string {
 	}
 }
 
-// Valid reports whether a names an algorithm this release implements. It is the
-// single source of truth consulted both by the entry points that return an
-// error on a bad value and by those that must reject it at construction time.
-func (a Algorithm) Valid() bool {
+// valid reports whether a names an algorithm this release implements.
+//
+// It is unexported because there is exactly one place an Algorithm can enter
+// the package — WithAlgorithm — and that is the only caller. It was public
+// while the rule was spread across the entry points that could report a bad
+// value as an error and those that had to panic; with one gate, a caller has
+// nothing to check that WithAlgorithm does not check for them.
+func (a Algorithm) valid() bool {
 	switch a {
 	case Myers:
 		return true

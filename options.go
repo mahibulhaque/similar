@@ -35,7 +35,7 @@ func WithContext(ctx context.Context) Option {
 // rather than when the diff runs, so that entry points returning no error
 // cannot be handed one they could not report.
 func WithAlgorithm(alg Algorithm) Option {
-	if !alg.Valid() {
+	if !alg.valid() {
 		panic(fmt.Sprintf("similar: unknown algorithm %d", int(alg)))
 	}
 	return func(c *config) { c.algorithm = alg }

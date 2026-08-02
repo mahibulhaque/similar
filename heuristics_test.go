@@ -85,10 +85,7 @@ func TestDisjointFastPathThroughHookStack(t *testing.T) {
 		new[i] = i + n
 	}
 
-	ops, err := captureOps(context.Background(), Myers, old, new)
-	if err != nil {
-		t.Fatalf("captureOps: %v", err)
-	}
+	ops := captureOps(context.Background(), Myers, old, new)
 
 	assertScriptCovers(t, old, new, ops)
 
@@ -114,10 +111,7 @@ func TestSmallSideExactThroughHookStack(t *testing.T) {
 	}
 	new := []int{500}
 
-	ops, err := captureOps(context.Background(), Myers, old, new)
-	if err != nil {
-		t.Fatalf("captureOps: %v", err)
-	}
+	ops := captureOps(context.Background(), Myers, old, new)
 
 	assertScriptCovers(t, old, new, ops)
 

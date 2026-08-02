@@ -14,7 +14,6 @@ func (NoopHook) Finish() error
 func (NoopHook) Insert(oldIndex, newIndex, newLen int) error
 func (NoopHook) Replace(oldIndex, oldLen, newIndex, newLen int) error
 func (a Algorithm) String() string
-func (a Algorithm) Valid() bool
 func (c *Capture) Delete(oldIndex, oldLen, newIndex int) error
 func (c *Capture) Equal(oldIndex, newIndex, length int) error
 func (c *Capture) Finish() error
@@ -62,12 +61,8 @@ func (t ChangeTag) MarshalJSON() ([]byte, error)
 func (t ChangeTag) String() string
 func (t DiffTag) MarshalJSON() ([]byte, error)
 func (t DiffTag) String() string
-func CaptureDiff[T comparable](alg Algorithm, old, new []T) []DiffOp
 func DiffChars(old, new string, opts ...Option) *TextDiff
-func DiffDeadline[T comparable](ctx context.Context, alg Algorithm, old, new []T) ([]DiffOp, error)
-func DiffHookDeadline[T comparable](ctx context.Context, alg Algorithm, hook DiffHook, old, new []T) error
 func DiffLines(old, new string, opts ...Option) *TextDiff
-func DiffRangeHookDeadline[T comparable](ctx context.Context, alg Algorithm, hook DiffHook, old []T, oldStart, oldEnd int, new []T, newStart, newEnd int) error
 func DiffRangeTo[T comparable](hook DiffHook, old []T, oldStart, oldEnd int, new []T, newStart, newEnd int, opts ...Option) error
 func DiffRatio(ops []DiffOp, oldLen, newLen int) float64
 func DiffSlices(old, new []string, nl NewlinePolicy, opts ...Option) *TextDiff

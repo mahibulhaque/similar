@@ -1,7 +1,7 @@
 package similar_test
 
 import (
-	"context"
+	"reflect"
 	"testing"
 
 	"github.com/mahibulhaque/similar"
@@ -9,68 +9,48 @@ import (
 
 const unknownAlg = similar.Algorithm(99)
 
-func TestDiffDeadlineRejectsUnknownAlgorithm(t *testing.T) {
-	ops, err := similar.DiffDeadline(context.Background(), unknownAlg, []int{1}, []int{2})
-	if err == nil {
-		t.Fatal("DiffDeadline with unknown algorithm: want error, got nil")
-	}
-	if ops != nil {
-		t.Fatalf("ops = %v, want nil on error", ops)
-	}
-}
-
-func TestDiffHookDeadlineRejectsUnknownAlgorithm(t *testing.T) {
-	err := similar.DiffHookDeadline(context.Background(), unknownAlg, similar.NewCapture(), []int{1}, []int{2})
-	if err == nil {
-		t.Fatal("DiffHookDeadline with unknown algorithm: want error, got nil")
-	}
-}
-
-func TestDiffRangeHookDeadlineRejectsUnknownAlgorithm(t *testing.T) {
-	err := similar.DiffRangeHookDeadline(context.Background(), unknownAlg, similar.NewCapture(),
-		[]int{1}, 0, 1, []int{2}, 0, 1)
-	if err == nil {
-		t.Fatal("DiffRangeHookDeadline with unknown algorithm: want error, got nil")
-	}
-}
-
-// CaptureDiff cannot report the failure, so it panics rather than returning a
-// nil script that reads as "no differences".
-func TestCaptureDiffPanicsOnUnknownAlgorithm(t *testing.T) {
+// WithAlgorithm is the only way an Algorithm enters the package, so it is the
+// only place a bad one can be caught — and it catches it where the caller can
+// see which argument was wrong, rather than at some later diff that has no
+// error to return.
+func TestWithAlgorithmIsTheOnlyGate(t *testing.T) {
 	defer func() {
 		r := recover()
 		if r == nil {
-			t.Fatal("CaptureDiff with unknown algorithm: want panic, got none")
+			t.Fatal("WithAlgorithm(99): want panic, got none")
 		}
 		if want := "similar: unknown algorithm 99"; r != want {
 			t.Fatalf("panic = %v, want %q", r, want)
 		}
 	}()
-	similar.CaptureDiff(unknownAlg, []int{1}, []int{2})
+	similar.WithAlgorithm(unknownAlg)
 }
 
-func TestCaptureDiffMyersMatchesDiff(t *testing.T) {
+func TestWithAlgorithmMyersMatchesTheDefault(t *testing.T) {
 	old := []string{"a", "b", "c"}
 	new := []string{"a", "x", "c"}
-	got := similar.CaptureDiff(similar.Myers, old, new)
+
+	got := similar.Diff(old, new, similar.WithAlgorithm(similar.Myers))
 	want := similar.Diff(old, new)
-	if len(got) != len(want) {
-		t.Fatalf("CaptureDiff = %v, want %v", got, want)
-	}
-	for i := range got {
-		if got[i] != want[i] {
-			t.Fatalf("CaptureDiff = %v, want %v", got, want)
-		}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("explicit Myers = %v, want %v", got, want)
 	}
 }
 
-// The text layer honors WithAlgorithm instead of recording it and diffing with
-// Myers regardless.
-func TestTextWithAlgorithmPanicsOnUnknown(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("WithAlgorithm(99): want panic, got none")
-		}
-	}()
-	similar.WithAlgorithm(unknownAlg)
+// The text layer shares the option, so it honours the choice rather than
+// recording it and diffing with Myers regardless.
+func TestTextLayerHonorsWithAlgorithm(t *testing.T) {
+	d := similar.DiffLines("a\nb\n", "a\nc\n", similar.WithAlgorithm(similar.Myers))
+	if got := d.Algorithm(); got != similar.Myers {
+		t.Fatalf("Algorithm = %v, want %v", got, similar.Myers)
+	}
+}
+
+func TestAlgorithmString(t *testing.T) {
+	if got, want := similar.Myers.String(), "myers"; got != want {
+		t.Errorf("Myers.String() = %q, want %q", got, want)
+	}
+	if got, want := unknownAlg.String(), "Algorithm(99)"; got != want {
+		t.Errorf("unknown.String() = %q, want %q", got, want)
+	}
 }

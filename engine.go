@@ -20,8 +20,11 @@ import (
 // deadline and cancellation: a deadline hit yields a valid but possibly
 // approximate script and is not an error.
 //
-// It returns an error if alg names no known algorithm, or if a hook callback
-// fails (which aborts the diff).
+// The only error it returns is a hook callback's, which aborts the diff.
+//
+// It panics on an algorithm it does not know. WithAlgorithm is the only way to
+// choose one and it rejects an unusable value where the caller passes it, so
+// reaching this is a broken invariant rather than a runtime condition.
 func run[T comparable](
 	ctx context.Context,
 	alg Algorithm,
@@ -33,7 +36,7 @@ func run[T comparable](
 	case Myers:
 		return algorithms.DiffDeadline(ctx, hook, old, oldStart, oldEnd, new, newStart, newEnd)
 	default:
-		return fmt.Errorf("similar: unknown algorithm %d", int(alg))
+		panic(fmt.Sprintf("similar: unknown algorithm %d", int(alg)))
 	}
 }
 
@@ -41,16 +44,19 @@ func run[T comparable](
 // stack — Compact for semantic cleanup, Replace to coalesce adjacent
 // delete+insert, Capture to accumulate — and returns the resulting operations.
 //
-// The hooks in that stack never fail, so a non-nil error means alg was unknown.
+// It returns no error because it can encounter none: the hooks in that stack
+// never fail, and run panics rather than reporting an unknown algorithm. This
+// is the single place that states that, so neither Diff nor the text layer's
+// build has to handle an impossible one.
 func captureOps[T comparable](
 	ctx context.Context,
 	alg Algorithm,
 	old, new []T,
-) ([]DiffOp, error) {
+) []DiffOp {
 	capture := NewCapture()
 	hook := newCompact[T](NewReplaceHook(capture), old, new)
 	if err := run(ctx, alg, hook, old, 0, len(old), new, 0, len(new)); err != nil {
-		return nil, err
+		panic("similar: standard hook stack failed: " + err.Error())
 	}
-	return capture.Ops(), nil
+	return capture.Ops()
 }
