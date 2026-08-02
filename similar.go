@@ -3,20 +3,7 @@ package similar
 import (
 	"context"
 	"fmt"
-
-	"github.com/mahibulhaque/similar/internal/algorithms"
-	"github.com/mahibulhaque/similar/internal/engine"
 )
-
-// Algorithm selects the diff algorithm. In v0.x the only value is Myers; the
-// type exists so call sites stay stable as more algorithms ship.
-//
-// It is an alias for the type in internal/algorithms so that the text layer can
-// reference the same type without an import cycle.
-type Algorithm = algorithms.Algorithm
-
-// Myers is Eugene W. Myers' shortest-edit-script algorithm.
-const Myers = algorithms.Myers
 
 // Diff computes the diff between old and new using Myers' algorithm and returns
 // all operations. It never expires (background context) and so always produces
@@ -50,13 +37,13 @@ func mustBeKnown(alg Algorithm) {
 // the deadline is hit the returned script is valid but may be approximate; the
 // error is non-nil only if the algorithm or a hook fails.
 func DiffDeadline[T comparable](ctx context.Context, alg Algorithm, old, new []T) ([]DiffOp, error) {
-	return engine.Capture(ctx, alg, old, new)
+	return captureOps(ctx, alg, old, new)
 }
 
 // DiffHookDeadline streams operations to a custom DiffHook instead of
 // collecting them, honoring ctx's deadline and cancellation.
 func DiffHookDeadline[T comparable](ctx context.Context, alg Algorithm, hook DiffHook, old, new []T) error {
-	return engine.Run(ctx, alg, hook, old, 0, len(old), new, 0, len(new))
+	return run(ctx, alg, hook, old, 0, len(old), new, 0, len(new))
 }
 
 // DiffRangeHookDeadline is like DiffHookDeadline but diffs sub-ranges of old
@@ -68,5 +55,5 @@ func DiffRangeHookDeadline[T comparable](
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 ) error {
-	return engine.Run(ctx, alg, hook, old, oldStart, oldEnd, new, newStart, newEnd)
+	return run(ctx, alg, hook, old, oldStart, oldEnd, new, newStart, newEnd)
 }

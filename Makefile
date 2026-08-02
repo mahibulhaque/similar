@@ -20,4 +20,4 @@ cover:
 
 ci: test lint
 	@echo "checking golden files are up to date (no -update)"
-	$(GO) test . -run TestGolden
+	$(GO) test . -run 'Golden|TestPublicAPI'
