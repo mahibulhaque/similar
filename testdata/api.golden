@@ -4,6 +4,7 @@ const ChangeInsert ChangeTag = iota + 2
 const Delete DiffTag = iota + 1
 const Equal DiffTag = iota
 const Insert DiffTag = iota + 2
+const LCS Algorithm = iota + 1
 const Myers Algorithm = iota
 const NewlineTerminatedTokens NewlinePolicy = true
 const PlainTokens NewlinePolicy = false

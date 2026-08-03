@@ -287,32 +287,50 @@ func TestGolden(t *testing.T) {
 		{"prefix_suffix", []string{"a", "b", "c", "d", "e"}, []string{"a", "b", "X", "d", "e"}},
 		{"pure_insert", []string{"x"}, []string{"x", "y", "z"}},
 	}
-	for _, fx := range fixtures {
-		t.Run(fx.name, func(t *testing.T) {
-			ops := similar.Diff(fx.old, fx.new, similar.WithAlgorithm(similar.Myers))
-			got, err := json.MarshalIndent(ops, "", "  ")
-			if err != nil {
-				t.Fatal(err)
-			}
-			got = append(got, '\n')
-			path := filepath.Join("testdata", fx.name+".golden")
-			if *update {
-				if err := os.MkdirAll("testdata", 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(path, got, 0o644); err != nil {
-					t.Fatal(err)
-				}
-				return
-			}
-			want, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatalf("read golden (run with -update): %v", err)
-			}
-			if string(got) != string(want) {
-				t.Fatalf("golden mismatch for %s:\ngot:\n%s\nwant:\n%s", fx.name, got, want)
-			}
-		})
+	// Myers keeps the original file names; a second algorithm gets its own set,
+	// so a divergence between the two shows up as a diff in one file rather than
+	// as a choice of which snapshot is right.
+	algorithms := []struct {
+		alg    similar.Algorithm
+		prefix string
+	}{
+		{similar.Myers, ""},
+		{similar.LCS, "lcs_"},
+	}
+	for _, alg := range algorithms {
+		for _, fx := range fixtures {
+			t.Run(alg.alg.String()+"/"+fx.name, func(t *testing.T) {
+				goldenOps(t, alg.prefix+fx.name, similar.Diff(fx.old, fx.new, similar.WithAlgorithm(alg.alg)))
+			})
+		}
+	}
+}
+
+// goldenOps compares ops against testdata/<name>.golden, or rewrites it under
+// -update.
+func goldenOps(t *testing.T, name string, ops []similar.DiffOp) {
+	t.Helper()
+	got, err := json.MarshalIndent(ops, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = append(got, '\n')
+	path := filepath.Join("testdata", name+".golden")
+	if *update {
+		if err := os.MkdirAll("testdata", 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, got, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read golden (run with -update): %v", err)
+	}
+	if string(got) != string(want) {
+		t.Fatalf("golden mismatch for %s:\ngot:\n%s\nwant:\n%s", name, got, want)
 	}
 }
 

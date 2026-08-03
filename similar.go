@@ -76,6 +76,8 @@ func run[T comparable](
 	switch alg {
 	case Myers:
 		return algorithms.DiffMyersDeadline(ctx, hook, old, oldStart, oldEnd, new, newStart, newEnd)
+	case LCS:
+		return algorithms.DiffLCSDeadline(ctx, hook, old, oldStart, oldEnd, new, newStart, newEnd)
 	default:
 		panic(fmt.Sprintf("similar: unknown algorithm %d", int(alg)))
 	}
