@@ -156,6 +156,13 @@ func DiffRatio(ops []DiffOp, oldLen, newLen int) float64 {
 			matches += op.Len()
 		}
 	}
+	return ratioFromMatches(matches, oldLen, newLen)
+}
+
+// ratioFromMatches is the ratio formula itself, stated once: 2*matches over the
+// combined length, and 1.0 for two empty sequences. DiffRatio reaches it from a
+// captured script, captureRatio from a running count.
+func ratioFromMatches(matches, oldLen, newLen int) float64 {
 	total := oldLen + newLen
 	if total == 0 {
 		return 1.0

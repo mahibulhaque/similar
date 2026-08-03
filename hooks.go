@@ -51,6 +51,26 @@ func (NoopHook) Finish() error                                        { return n
 
 var _ DiffHook = NoopHook{}
 
+// matchCounter is a DiffHook that keeps only the total length of the Equal
+// spans, which is everything a similarity ratio needs.
+//
+// It exists so a caller who wants a number rather than a script pays for
+// neither. It is used alone, without the standard stack: Capture would allocate
+// a slice of ops to be thrown away, ReplaceHook would coalesce ops nobody
+// reads, and compact would rewrite boundaries that cannot change this total.
+// See captureRatio, and the invariant its test pins.
+type matchCounter struct {
+	NoopHook
+	matches int
+}
+
+func (m *matchCounter) Equal(oldIndex, newIndex, length int) error {
+	m.matches += length
+	return nil
+}
+
+var _ DiffHook = (*matchCounter)(nil)
+
 // Capture is a DiffHook that accumulates every operation into a slice.
 //
 // It is the instrument the library and its tests share for the common case of

@@ -101,3 +101,27 @@ func captureOps[T comparable](
 	}
 	return capture.Ops()
 }
+
+// captureRatio runs alg over the whole of old and new and returns the
+// similarity ratio, without materializing a script.
+//
+// It deliberately skips the standard hook stack. A ratio reads only the total
+// length of the Equal spans, and that total is what the stack leaves alone:
+// ReplaceHook merges ops, and compact shifts hunk boundaries and merges
+// neighbours, but neither creates nor destroys a matched item. So the number
+// here equals DiffRatio over the compacted script — pinned by
+// TestCaptureRatioMatchesTheStandardStack — for the cost of a counter.
+//
+// Like captureOps it returns no error, for the same reason: matchCounter cannot
+// fail and run panics on an unknown algorithm.
+func captureRatio[T comparable](
+	ctx context.Context,
+	alg Algorithm,
+	old, new []T,
+) float64 {
+	counter := &matchCounter{}
+	if err := run(ctx, alg, counter, old, 0, len(old), new, 0, len(new)); err != nil {
+		panic("similar: match counter failed: " + err.Error())
+	}
+	return ratioFromMatches(counter.matches, len(old), len(new))
+}

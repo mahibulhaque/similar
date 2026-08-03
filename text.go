@@ -1,6 +1,7 @@
 package similar
 
 import (
+	"context"
 	"iter"
 	"maps"
 	"sort"
@@ -361,7 +362,10 @@ func GetCloseMatches(word string, possibilities []string, n int, cutoff float64)
 		if quick.calc(seq2) < cutoff {
 			continue
 		}
-		ratio := DiffSlices(seq1, seq2, PlainTokens).Ratio()
+		// captureRatio rather than DiffSlices: only the number is wanted, so
+		// there is no reason to copy the tokens, build a TextDiff, or run the
+		// script through the compaction stack.
+		ratio := captureRatio(context.Background(), Myers, seq1, seq2)
 		if ratio >= cutoff {
 			matches = append(matches, scored{ratio: ratio, word: p})
 		}

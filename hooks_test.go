@@ -3,6 +3,7 @@ package similar
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"reflect"
 	"slices"
 	"testing"
@@ -348,5 +349,75 @@ func TestSmallSideExactThroughHookStack(t *testing.T) {
 	}
 	if got, want := scriptCost(ops), n-1; got != want {
 		t.Fatalf("script cost = %d, want %d", got, want)
+	}
+}
+
+// captureRatio skips the standard hook stack on the claim that compaction and
+// replace-coalescing preserve the total length of the Equal spans. That claim is
+// the whole basis for the cheaper path, so it is checked directly, over random
+// pairs across the shapes the heuristics and the recursion each handle.
+func TestCaptureRatioMatchesTheStandardStack(t *testing.T) {
+	r := rand.New(rand.NewSource(20260803))
+	alphabets := []string{"ab", "abcdefgh", "abcdefghijklmnopqrstuvwxyz"}
+
+	for _, alphabet := range alphabets {
+		for _, size := range []int{0, 1, 2, 7, 40, 200} {
+			for i := 0; i < 120; i++ {
+				mk := func() []string {
+					n := r.Intn(size + 1)
+					s := make([]string, n)
+					for j := range s {
+						s[j] = string(alphabet[r.Intn(len(alphabet))])
+					}
+					return s
+				}
+				old, new := mk(), mk()
+
+				viaStack := DiffRatio(captureOps(context.Background(), Myers, old, new), len(old), len(new))
+				viaCounter := captureRatio(context.Background(), Myers, old, new)
+				if viaStack != viaCounter {
+					t.Fatalf("alphabet %q size %d: stack ratio %v, counter ratio %v\nold=%q\nnew=%q",
+						alphabet, size, viaStack, viaCounter, old, new)
+				}
+			}
+		}
+	}
+}
+
+// The same claim at the two shapes that skip the recursion entirely: the
+// disjoint fast path and the small-side-exact walk.
+func TestCaptureRatioMatchesTheStandardStackForHeuristicShapes(t *testing.T) {
+	const n = 512
+	disjointOld := make([]int, n)
+	disjointNew := make([]int, n)
+	for i := range disjointOld {
+		disjointOld[i] = i
+		disjointNew[i] = i + n
+	}
+
+	longSide := make([]int, 1000)
+	for i := range longSide {
+		longSide[i] = i
+	}
+
+	cases := []struct {
+		name     string
+		old, new []int
+	}{
+		{"disjoint", disjointOld, disjointNew},
+		{"small side exact", longSide, []int{500}},
+		{"identical", longSide, longSide},
+		{"both empty", nil, nil},
+		{"old empty", nil, []int{1, 2, 3}},
+		{"new empty", []int{1, 2, 3}, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			viaStack := DiffRatio(captureOps(context.Background(), Myers, c.old, c.new), len(c.old), len(c.new))
+			viaCounter := captureRatio(context.Background(), Myers, c.old, c.new)
+			if viaStack != viaCounter {
+				t.Fatalf("stack ratio %v, counter ratio %v", viaStack, viaCounter)
+			}
+		})
 	}
 }
