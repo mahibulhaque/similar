@@ -314,11 +314,13 @@ func TestInvariantMatrix(t *testing.T) {
 		{"unbalanced prepend (anchor)", seq(0, 300), append(seq(9000, 5), seq(0, 300)...)},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			ops := captureMyers(tc.old, tc.new)
-			assertInvariants(t, tc.old, tc.new, ops)
-		})
+	for _, alg := range everyAlgorithm {
+		for _, tc := range cases {
+			t.Run(alg.name+"/"+tc.name, func(t *testing.T) {
+				ops := alg.capture(tc.old, tc.new)
+				assertInvariants(t, tc.old, tc.new, ops)
+			})
+		}
 	}
 }
 

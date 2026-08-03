@@ -185,6 +185,34 @@ func captureMyersDeadline[T comparable](ctx context.Context, old, new []T) []cap
 	return c.Ops()
 }
 
+// captureLCS and captureLCSDeadline are the same for the LCS table diff.
+func captureLCS[T comparable](old, new []T) []capturedOp {
+	c := newCapture()
+	if err := DiffLCS(c, old, 0, len(old), new, 0, len(new)); err != nil {
+		panic(err)
+	}
+	return c.Ops()
+}
+
+func captureLCSDeadline[T comparable](ctx context.Context, old, new []T) []capturedOp {
+	c := newCapture()
+	if err := DiffLCSDeadline(ctx, c, old, 0, len(old), new, 0, len(new)); err != nil {
+		panic(err)
+	}
+	return c.Ops()
+}
+
+// everyAlgorithm is what a suite ranges over when the behavior under test is a
+// property of any minimal edit script rather than of one algorithm. Both entries
+// capture the raw core, with no Compact stage above it.
+var everyAlgorithm = []struct {
+	name    string
+	capture func(old, new []int) []capturedOp
+}{
+	{"myers", captureMyers[int]},
+	{"lcs", captureLCS[int]},
+}
+
 func slicesEqual[T comparable](a, b []T) bool {
 	if len(a) != len(b) {
 		return false
@@ -228,6 +256,21 @@ func checkContiguous[T comparable](t *testing.T, old, new []T, ops []capturedOp)
 	}
 	if newCursor != len(new) {
 		t.Fatalf("ops cover new up to %d, want %d", newCursor, len(new))
+	}
+}
+
+// assertOps compares a recording against hand-authored operations. It is for
+// the fixtures that pin an exact script — everything else is judged by the
+// oracle, which does not care which of several minimal scripts came out.
+func assertOps(t *testing.T, got, want []capturedOp) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("ops = %v, want %v", got, want)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("op %d = %+v, want %+v (all ops: %v)", i, got[i], want[i], got)
+		}
 	}
 }
 

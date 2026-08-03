@@ -17,6 +17,14 @@ const (
 	defaultFrontAnchorMinCommon    = 96
 )
 
+// defaultLCSTableMaxWork caps the cells of the LCS table at roughly 64 MiB of
+// int32 — the same byte budget defaultSmallSideExactMaxWork gives its uint8
+// table. It has no counterpart in the Rust crate, whose table is a map that
+// simply grows; the LCS algorithm is O(N*M) in space, so without a cap a large
+// enough input is an allocation failure rather than a slow diff. Over the cap
+// the table is declined and the middle approximated, exactly as on a deadline.
+const defaultLCSTableMaxWork = 16_000_000
+
 // smallSideExactHardMax is the largest small side the exact fallback can
 // handle: its dp table stores LCS lengths in a uint8, and the LCS of a range
 // cannot exceed the length of the smaller side. The gate is clamped to this, so
@@ -69,6 +77,8 @@ type limits struct {
 	// frontAnchorMinCommon is the shortest common run that justifies anchoring,
 	// and also the shortest range the scan will look at.
 	frontAnchorMinCommon int
+	// lcsTableMaxWork caps the cells — (oldLen+1)*(newLen+1) — of the LCS table.
+	lcsTableMaxWork int
 }
 
 // fromContext builds the limits for one run: the production gates, plus ctx's
@@ -84,6 +94,7 @@ func fromContext(ctx context.Context) limits {
 		disjointFastPathMinWork: defaultDisjointFastPathMinWork,
 		frontAnchorMaxSkip:      defaultFrontAnchorMaxSkip,
 		frontAnchorMinCommon:    defaultFrontAnchorMinCommon,
+		lcsTableMaxWork:         defaultLCSTableMaxWork,
 	}
 	if ctx != nil {
 		if t, ok := ctx.Deadline(); ok {
