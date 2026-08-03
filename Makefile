@@ -1,6 +1,8 @@
 GO ?= go
 
-.PHONY: fmt lint test fuzz cover ci
+.PHONY: fmt lint test fuzz fuzz-myers fuzz-lcs cover ci
+
+FUZZTIME ?= 60s
 
 fmt:
 	$(GO) run mvdan.cc/gofumpt@latest -l -w .
@@ -11,8 +13,14 @@ lint:
 test:
 	$(GO) test ./... -race -cover
 
-fuzz:
-	$(GO) test ./internal/algorithms/ -run=xxx -fuzz=FuzzMyersInvariants -fuzztime=60s
+# -fuzz takes one target, so each algorithm gets its own run.
+fuzz: fuzz-myers fuzz-lcs
+
+fuzz-myers:
+	$(GO) test ./internal/algorithms/ -run=xxx -fuzz=FuzzMyersInvariants -fuzztime=$(FUZZTIME)
+
+fuzz-lcs:
+	$(GO) test ./internal/algorithms/ -run=xxx -fuzz=FuzzLCSInvariants -fuzztime=$(FUZZTIME)
 
 cover:
 	$(GO) test ./... -coverprofile=coverage.out

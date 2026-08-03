@@ -3,10 +3,12 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/mahibulhaque/similar.svg)](https://pkg.go.dev/github.com/mahibulhaque/similar)
 
 A faithful Go port of the [Rust `similar` crate](https://github.com/mitsuhiko/similar)'s
-Myers' diff algorithm: a minimal edit script between two slices of any
-`comparable` type, with the crate's heuristics and an optional deadline.
+diff algorithms: a minimal edit script between two slices of any `comparable`
+type, with the crate's heuristics and an optional deadline.
 
 - **Minimal edit scripts.** Classic Myers divide-and-conquer, cost `N + M − 2·LCS`.
+- **Two algorithms.** Myers by default; the classic LCS table diff when you need
+  to match another difflib-style implementation.
 - **Any comparable element.** `[]string`, `[]rune`, `[]byte`, `[]int`, or your
   own comparable structs — no adapters.
 - **Bounded worst case.** Pass a `context.Context` with a deadline; on a hit the
@@ -55,6 +57,20 @@ ops := similar.Diff(old, new, similar.WithContext(ctx))
 A deadline hit yields a valid but possibly approximate script — not an error,
 which is why `Diff` returns none. `WithContext` and `WithAlgorithm` are the whole
 option set, and both apply to the text entry points too.
+
+### Choosing an algorithm
+
+```go
+ops := similar.Diff(old, new, similar.WithAlgorithm(similar.LCS))
+```
+
+`Myers` is the default and the one for large inputs: its cost scales with the
+number of differences. `LCS` is the classic table algorithm — O(N·M) in time and
+space, useful for matching another difflib-style implementation — and past a few
+thousand tokens a side it stops building the table and approximates the changed
+middle as a single replacement. Both produce a minimal script, so the choice is
+one of cost, not quality. `WithAlgorithm` panics on an unknown value, where you
+pass it.
 
 ### Streaming with a hook
 

@@ -56,7 +56,7 @@ Read outside-in: **Compact** buffers and cleans up the script semantically,
 `DiffTo` gets none of this — they see the raw script.
 
 **Replace is a synthesis, never an observation.** This is the term most likely
-to mislead. The Myers core cannot produce a `Replace`: its internal contract has
+to mislead. Neither core can produce a `Replace`: their internal contract has
 no such callback, and writing one is a compile error (ADR 0002, and the comment
 on `internal/algorithms.diffHook`). Every Replace a caller sees was manufactured
 by `ReplaceHook` from a Delete immediately followed by an Insert. So "did this
@@ -71,9 +71,10 @@ Every option applies to every entry point in both layers. Anything that suits
 only one is an argument to that function: a hook and a sub-range change what is
 returned, not how it is computed (ADR 0002).
 
-**Algorithm** — selects the implementation. `Myers` is the only value. It is
-validated in exactly one place, `WithAlgorithm`, at the moment the option is
-built rather than when the diff runs.
+**Algorithm** — selects the implementation: `Myers`, the default, or `LCS`, the
+classic table algorithm. Both produce a minimal script, so the choice is one of
+cost, not quality. It is validated in exactly one place, `WithAlgorithm`, at the
+moment the option is built rather than when the diff runs.
 
 **Approximate script** — what a diff yields when its context deadline expires or
 is cancelled: still valid, still reconstructs `new`, but no longer guaranteed
@@ -116,4 +117,15 @@ is read and never what the algorithm decides — those stay constants.
 **small-side-exact** walk (one side tiny, the other large), and **front-anchor
 peeling** (a heavily unbalanced shift). All three are *exactness-preserving* —
 they produce the same script full search would, only faster. That is why no test
-can identify which one ran by looking at the output.
+can identify which one ran by looking at the output. Only the first is shared:
+the other two are steps inside Myers' recursion, not preflight checks, so the
+LCS diff runs the disjoint fast path and nothing else.
+
+**Table** — the LCS algorithm's whole method: one cell per pair of suffixes,
+holding the length of their longest common subsequence, filled backwards and then
+walked forward to emit one op per element. Two words about it mislead if read
+loosely. It is not the small-side-exact heuristic's dp table, which is a
+different table for a different purpose. And a **declined** table — refused for
+crossing `lcsTableMaxWork`, or abandoned on a deadline — is not an error: the
+changed middle becomes one Delete plus one Insert, which is what "approximate
+script" means for this algorithm.

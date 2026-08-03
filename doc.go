@@ -1,11 +1,12 @@
-// Package similar computes a minimal edit script (Myers' diff) between two
-// slices of any comparable type.
+// Package similar computes a minimal edit script between two slices of any
+// comparable type.
 //
-// It is a faithful behavior port of the Rust `similar` crate's Myers
-// implementation: the classic divide-and-conquer middle-snake recursion plus
-// its heuristics (front-anchor peel, exact small-side fallback, and a disjoint
-// fast path), with an optional deadline that bails to an approximate script
-// rather than running unbounded.
+// It is a faithful behavior port of the Rust `similar` crate. Myers' diff is the
+// default: the classic divide-and-conquer middle-snake recursion plus its
+// heuristics (front-anchor peel, exact small-side fallback, and a disjoint fast
+// path), with an optional deadline that bails to an approximate script rather
+// than running unbounded. The classic LCS table diff is also available, for
+// callers matching another difflib-style implementation's output.
 //
 // # Quick start
 //
@@ -44,10 +45,12 @@
 //
 // # Algorithm selection
 //
-// [Algorithm] selects the implementation; Myers is the only value in this
-// release. [WithAlgorithm] is the single point at which a value is checked, and
-// it panics on an unknown one where the caller passes it — the entry points
-// return no error for it because they cannot be reached with one.
+// [Algorithm] selects the implementation. [Myers] is the default and the one to
+// use on large inputs; [LCS] is the classic table algorithm, O(N*M) in time and
+// space. Both produce a minimal script. [WithAlgorithm] is the single point at
+// which a value is checked, and it panics on an unknown one where the caller
+// passes it — the entry points return no error for it because they cannot be
+// reached with one.
 //
 // # Streaming with a hook
 //

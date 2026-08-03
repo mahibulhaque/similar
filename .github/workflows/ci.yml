@@ -39,8 +39,12 @@ jobs:
         with:
           version: latest
 
-      - name: Short fuzz
+      # -fuzz takes one target, so each algorithm gets its own invocation.
+      - name: Short fuzz (myers)
         run: go test ./internal/algorithms/ -run=xxx -fuzz=FuzzMyersInvariants -fuzztime=30s
+
+      - name: Short fuzz (lcs)
+        run: go test ./internal/algorithms/ -run=xxx -fuzz=FuzzLCSInvariants -fuzztime=30s
 
   nightly-fuzz:
     if: github.event_name == 'schedule'
@@ -56,5 +60,8 @@ jobs:
           go-version: "1.26"
           cache: true
 
-      - name: Long fuzz
+      - name: Long fuzz (myers)
         run: go test ./internal/algorithms/ -run=xxx -fuzz=FuzzMyersInvariants -fuzztime=15m
+
+      - name: Long fuzz (lcs)
+        run: go test ./internal/algorithms/ -run=xxx -fuzz=FuzzLCSInvariants -fuzztime=15m
