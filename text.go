@@ -351,8 +351,14 @@ func GetCloseMatches(word string, possibilities []string, n int, cutoff float64)
 	}
 	var matches []scored
 	for _, p := range possibilities {
+		// The length bound needs a count, not a token slice, so it runs before
+		// the candidate is tokenized: a candidate rejected on length alone
+		// costs one pass over its bytes and no allocation.
+		if upperLenRatio(len(seq1), utf8.RuneCountInString(p)) < cutoff {
+			continue
+		}
 		seq2 := tokenizeChars(p)
-		if upperSeqRatio(seq1, seq2) < cutoff || quick.calc(seq2) < cutoff {
+		if quick.calc(seq2) < cutoff {
 			continue
 		}
 		ratio := DiffSlices(seq1, seq2, PlainTokens).Ratio()
@@ -378,17 +384,22 @@ func GetCloseMatches(word string, possibilities []string, n int, cutoff float64)
 	return rv
 }
 
-// upperSeqRatio is a cheap upper bound on the similarity of two token
-// sequences: 2*min(len)/ (len1+len2), or 1.0 when both are empty. It is used to
-// discard obvious non-matches before running a full diff.
-func upperSeqRatio(seq1, seq2 []string) float64 {
-	n := len(seq1) + len(seq2)
+// upperLenRatio is a cheap upper bound on the similarity of two token
+// sequences: 2*min(len)/(len1+len2), or 1.0 when both are empty. Even a perfect
+// match of every token on the shorter side cannot beat it, so a candidate below
+// the cutoff here cannot reach it and is discarded before any diff runs.
+//
+// It takes lengths rather than the sequences themselves because the caller may
+// not have tokenized the candidate yet — for text that is a rune count, which
+// costs no allocation.
+func upperLenRatio(len1, len2 int) float64 {
+	n := len1 + len2
 	if n == 0 {
 		return 1.0
 	}
-	min := len(seq1)
-	if len(seq2) < min {
-		min = len(seq2)
+	min := len1
+	if len2 < min {
+		min = len2
 	}
 	return 2.0 * float64(min) / float64(n)
 }

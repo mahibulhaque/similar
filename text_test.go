@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestDiffLinesOps(t *testing.T) {
@@ -397,12 +398,31 @@ func TestGetCloseMatchesEmpty(t *testing.T) {
 	}
 }
 
-func TestUpperSeqRatio(t *testing.T) {
-	if r := upperSeqRatio(nil, nil); r != 1.0 {
-		t.Errorf("upperSeqRatio(empty) = %v, want 1.0", r)
+func TestUpperLenRatio(t *testing.T) {
+	if r := upperLenRatio(0, 0); r != 1.0 {
+		t.Errorf("upperLenRatio(empty) = %v, want 1.0", r)
 	}
-	if r := upperSeqRatio([]string{"a", "b"}, []string{"a", "b", "c", "d"}); r != 2.0*2/6 {
-		t.Errorf("upperSeqRatio = %v, want %v", r, 2.0*2/6)
+	if r := upperLenRatio(2, 4); r != 2.0*2/6 {
+		t.Errorf("upperLenRatio = %v, want %v", r, 2.0*2/6)
+	}
+	if r := upperLenRatio(4, 2); r != 2.0*2/6 {
+		t.Errorf("upperLenRatio is not symmetric: %v", r)
+	}
+}
+
+// The prefilter compares a token count against a candidate's length, so that
+// length has to be counted in runes. "ééé" is three tokens in six bytes: a
+// byte count would bound it at 2*3/(3+6) = 0.667 and discard an exact match.
+func TestUpperLenRatioUsesRuneCounts(t *testing.T) {
+	const multibyte = "ééé"
+	if r := upperLenRatio(len(tokenizeChars(multibyte)), len(multibyte)); r >= 0.9 {
+		t.Fatalf("byte length should bound below the cutoff, got %v", r)
+	}
+	if r := upperLenRatio(len(tokenizeChars(multibyte)), utf8.RuneCountInString(multibyte)); r != 1.0 {
+		t.Errorf("rune-count bound = %v, want 1.0", r)
+	}
+	if got := GetCloseMatches(multibyte, []string{multibyte}, 3, 0.9); len(got) != 1 {
+		t.Errorf("exact multi-byte match was filtered out: got %v", got)
 	}
 }
 
