@@ -171,7 +171,7 @@ func editCost(ops []capturedOp) int {
 // Capture hook — equal/delete/insert only, with no Compact stage above it.
 func captureMyers[T comparable](old, new []T) []capturedOp {
 	c := newCapture()
-	if err := Diff(c, old, 0, len(old), new, 0, len(new)); err != nil {
+	if err := DiffMyers(c, old, 0, len(old), new, 0, len(new)); err != nil {
 		panic(err)
 	}
 	return c.Ops()
@@ -179,7 +179,7 @@ func captureMyers[T comparable](old, new []T) []capturedOp {
 
 func captureMyersDeadline[T comparable](ctx context.Context, old, new []T) []capturedOp {
 	c := newCapture()
-	if err := DiffDeadline(ctx, c, old, 0, len(old), new, 0, len(new)); err != nil {
+	if err := DiffMyersDeadline(ctx, c, old, 0, len(old), new, 0, len(new)); err != nil {
 		panic(err)
 	}
 	return c.Ops()

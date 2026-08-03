@@ -1,10 +1,8 @@
-// Package algorithms holds the Myers' diff implementation and its heuristics.
-//
-// It ports the Rust `similar` crate's Myers algorithm behavior-for-behavior:
-// classic divide-and-conquer middle-snake recursion, front-anchor peeling,
-// exact small-side fallback (both directions), the disjoint fast path, and a
-// deadline bailout. It is internal; the public facade lives in package similar.
 package algorithms
+
+// This file holds Myers' diff: the divide-and-conquer middle-snake recursion,
+// its reach vectors, and the front-anchor peel. The package doc is in doc.go,
+// the heuristics Myers shares with the LCS table diff are in heuristics.go.
 
 import (
 	"context"
@@ -73,19 +71,19 @@ func absInt(x int) int {
 	return x
 }
 
-// Diff runs Myers' diff over the given sub-ranges without a deadline.
-func Diff[T comparable](
+// DiffMyers runs Myers' diff over the given sub-ranges without a deadline.
+func DiffMyers[T comparable](
 	d diffHook,
 	old []T, oldStart, oldEnd int,
 	new []T, newStart, newEnd int,
 ) error {
-	return DiffDeadline(context.Background(), d, old, oldStart, oldEnd, new, newStart, newEnd)
+	return DiffMyersDeadline(context.Background(), d, old, oldStart, oldEnd, new, newStart, newEnd)
 }
 
-// DiffDeadline runs Myers' diff, honoring ctx's deadline and cancellation. On a
-// bailout it emits an approximate (delete+insert) script for the un-diffed
+// DiffMyersDeadline runs Myers' diff, honoring ctx's deadline and cancellation.
+// On a bailout it emits an approximate (delete+insert) script for the un-diffed
 // middle rather than erroring.
-func DiffDeadline[T comparable](
+func DiffMyersDeadline[T comparable](
 	ctx context.Context,
 	d diffHook,
 	old []T, oldStart, oldEnd int,

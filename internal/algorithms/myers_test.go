@@ -212,7 +212,7 @@ func TestFinishCalled(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := &finishRecorder{}
-			if err := Diff(f, tc.old, 0, len(tc.old), tc.new, 0, len(tc.new)); err != nil {
+			if err := DiffMyers(f, tc.old, 0, len(tc.old), tc.new, 0, len(tc.new)); err != nil {
 				t.Fatal(err)
 			}
 			if !f.finished {
@@ -250,7 +250,7 @@ func TestHookErrorPropagates(t *testing.T) {
 	a := []int{0, 1, 2, 3, 4}
 	b := []int{9, 8, 7, 6, 5}
 	h := &errAfter{remaining: 0}
-	err := Diff(h, a, 0, len(a), b, 0, len(b))
+	err := DiffMyers(h, a, 0, len(a), b, 0, len(b))
 	if err != errBoom {
 		t.Fatalf("err = %v, want boom", err)
 	}
@@ -365,7 +365,7 @@ func TestSubRangeDiff(t *testing.T) {
 	old := []int{100, 101, 1, 2, 3, 4, 200}
 	new := []int{100, 101, 1, 9, 3, 4, 200}
 	c := newCapture()
-	if err := Diff(c, old, 2, 6, new, 2, 6); err != nil {
+	if err := DiffMyers(c, old, 2, 6, new, 2, 6); err != nil {
 		t.Fatal(err)
 	}
 	ops := c.Ops()
