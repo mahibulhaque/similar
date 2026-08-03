@@ -398,6 +398,34 @@ func TestGetCloseMatchesEmpty(t *testing.T) {
 	}
 }
 
+// calc reuses one scratch map across candidates, so repeated calls must not
+// see each other's spent counts.
+func TestQuickSeqRatioRepeatedCalls(t *testing.T) {
+	q := newQuickSeqRatio(tokenizeChars("apple"))
+	first := q.calc(tokenizeChars("apple"))
+	for i := 0; i < 5; i++ {
+		if got := q.calc(tokenizeChars("apple")); got != first {
+			t.Fatalf("call %d = %v, want %v (scratch map leaked between calls)", i+2, got, first)
+		}
+	}
+	// Interleaving a different candidate must not disturb the answer either.
+	_ = q.calc(tokenizeChars("zzzzzzzz"))
+	if got := q.calc(tokenizeChars("apple")); got != first {
+		t.Fatalf("after another candidate = %v, want %v", got, first)
+	}
+}
+
+// The zero value has no scratch map; calc must still work.
+func TestQuickSeqRatioZeroValue(t *testing.T) {
+	var q quickSeqRatio
+	if got := q.calc(nil); got != 1.0 {
+		t.Errorf("zero value, empty seq = %v, want 1.0", got)
+	}
+	if got := q.calc(tokenizeChars("abc")); got != 0.0 {
+		t.Errorf("zero value, non-empty seq = %v, want 0.0", got)
+	}
+}
+
 func TestUpperLenRatio(t *testing.T) {
 	if r := upperLenRatio(0, 0); r != 1.0 {
 		t.Errorf("upperLenRatio(empty) = %v, want 1.0", r)

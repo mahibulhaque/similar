@@ -407,9 +407,17 @@ func upperLenRatio(len1, len2 int) float64 {
 // quickSeqRatio computes an order-independent upper-bound ratio by treating the
 // sequences as multisets, following Python's difflib. Because Go strings are
 // comparable, counting uses a plain map rather than a hashed bucket table.
+//
+// calc needs to spend the counts as it walks a candidate, so it works on a
+// scratch copy. That copy is a field rather than a fresh map per call: one
+// GetCloseMatches spends it once per candidate, and cloning the map each time
+// was the single largest allocation in that loop. calc is therefore not safe
+// for concurrent use on one quickSeqRatio — nothing shares one, since
+// newQuickSeqRatio is called per GetCloseMatches.
 type quickSeqRatio struct {
-	counts map[string]int
-	unique int
+	counts  map[string]int
+	unique  int
+	scratch map[string]int
 }
 
 func newQuickSeqRatio(seq []string) quickSeqRatio {
@@ -421,20 +429,28 @@ func newQuickSeqRatio(seq []string) quickSeqRatio {
 		}
 		counts[w]++
 	}
-	return quickSeqRatio{counts: counts, unique: unique}
+	return quickSeqRatio{
+		counts:  counts,
+		unique:  unique,
+		scratch: make(map[string]int, len(counts)),
+	}
 }
 
 // calc returns the multiset match ratio of seq against the sequence this ratio
-// was built from.
+// was built from. It overwrites the scratch map, so the result must be read
+// before calling it again.
 func (q quickSeqRatio) calc(seq []string) float64 {
 	n := q.unique + len(seq)
 	if n == 0 {
 		return 1.0
 	}
-	avail := maps.Clone(q.counts)
+	avail := q.scratch
 	if avail == nil {
-		avail = make(map[string]int)
+		// A zero-value quickSeqRatio has no scratch map to reuse.
+		avail = make(map[string]int, len(q.counts))
 	}
+	clear(avail)
+	maps.Copy(avail, q.counts)
 	matches := 0
 	for _, w := range seq {
 		if avail[w] > 0 {
