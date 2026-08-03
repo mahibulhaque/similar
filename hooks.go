@@ -2,6 +2,231 @@ package similar
 
 import "github.com/mahibulhaque/similar/internal/diffutil"
 
+// This file holds the hook contract and every hook this package ships: the
+// DiffHook interface and its NoopHook base, then the three implementations the
+// standard stack is built from — Capture accumulates, ReplaceHook coalesces an
+// adjacent delete+insert into a Replace, and compact cleans the script up
+// semantically. engine.go is what assembles them.
+
+// DiffHook reacts to an edit script from the old version to the new version.
+//
+// The algorithm invokes the callbacks as the diff is produced; a hook never
+// sees the sequence values, only indices and lengths. Any callback may return
+// an error, which aborts the diff and propagates to the caller. Finish is
+// always called after the last operation.
+//
+// Because Go interfaces cannot supply a default method that dispatches back to
+// the concrete type, the interface lists every callback. Implementations that
+// only care about some callbacks should embed NoopHook and override the rest.
+type DiffHook interface {
+	// Equal reports that old[oldIndex:oldIndex+length] equals
+	// new[newIndex:newIndex+length].
+	Equal(oldIndex, newIndex, length int) error
+	// Delete reports that old[oldIndex:oldIndex+oldLen] is removed; newIndex
+	// is the position in the new sequence at the point of deletion.
+	Delete(oldIndex, oldLen, newIndex int) error
+	// Insert reports that new[newIndex:newIndex+newLen] is inserted at
+	// oldIndex in the old sequence.
+	Insert(oldIndex, newIndex, newLen int) error
+	// Replace reports that old[oldIndex:oldIndex+oldLen] is replaced by
+	// new[newIndex:newIndex+newLen].
+	Replace(oldIndex, oldLen, newIndex, newLen int) error
+	// Finish is called once after the final operation.
+	Finish() error
+}
+
+// NoopHook is an embeddable DiffHook whose callbacks all return nil.
+//
+// Embed it to implement only the callbacks you care about:
+//
+//	type onlyEqual struct{ similar.NoopHook }
+//	func (h *onlyEqual) Equal(o, n, l int) error { /* ... */ return nil }
+type NoopHook struct{}
+
+func (NoopHook) Equal(oldIndex, newIndex, length int) error           { return nil }
+func (NoopHook) Delete(oldIndex, oldLen, newIndex int) error          { return nil }
+func (NoopHook) Insert(oldIndex, newIndex, newLen int) error          { return nil }
+func (NoopHook) Replace(oldIndex, oldLen, newIndex, newLen int) error { return nil }
+func (NoopHook) Finish() error                                        { return nil }
+
+var _ DiffHook = NoopHook{}
+
+// Capture is a DiffHook that accumulates every operation into a slice.
+//
+// It is the instrument the library and its tests share for the common case of
+// materializing a diff. The zero value is ready to use.
+type Capture struct {
+	ops []DiffOp
+}
+
+// NewCapture returns an empty Capture.
+func NewCapture() *Capture {
+	return &Capture{}
+}
+
+// Ops returns the accumulated operations.
+func (c *Capture) Ops() []DiffOp {
+	return c.ops
+}
+
+func (c *Capture) Equal(oldIndex, newIndex, length int) error {
+	c.ops = append(c.ops, DiffOp{
+		Tag:      Equal,
+		OldIndex: oldIndex,
+		NewIndex: newIndex,
+		OldLen:   length,
+		NewLen:   length,
+	})
+	return nil
+}
+
+func (c *Capture) Delete(oldIndex, oldLen, newIndex int) error {
+	c.ops = append(c.ops, DiffOp{
+		Tag:      Delete,
+		OldIndex: oldIndex,
+		NewIndex: newIndex,
+		OldLen:   oldLen,
+	})
+	return nil
+}
+
+func (c *Capture) Insert(oldIndex, newIndex, newLen int) error {
+	c.ops = append(c.ops, DiffOp{
+		Tag:      Insert,
+		OldIndex: oldIndex,
+		NewIndex: newIndex,
+		NewLen:   newLen,
+	})
+	return nil
+}
+
+func (c *Capture) Replace(oldIndex, oldLen, newIndex, newLen int) error {
+	c.ops = append(c.ops, DiffOp{
+		Tag:      Replace,
+		OldIndex: oldIndex,
+		NewIndex: newIndex,
+		OldLen:   oldLen,
+		NewLen:   newLen,
+	})
+	return nil
+}
+
+func (c *Capture) Finish() error { return nil }
+
+var _ DiffHook = (*Capture)(nil)
+
+// triple is an optional (a, b, c) tuple; ok reports whether it is set.
+type triple struct {
+	a, b, c int
+	ok      bool
+}
+
+// ReplaceHook is a DiffHook wrapper that coalesces adjacent deletions and
+// insertions into Replace operations (and merges runs of like operations),
+// forwarding the result to an inner hook.
+//
+// The core algorithm emits only equal/delete/insert; wrap it in a ReplaceHook
+// to obtain replace semantics without the core producing them. (It is named
+// ReplaceHook rather than Replace to avoid clashing with the Replace DiffTag
+// constant in this package.)
+type ReplaceHook struct {
+	d   DiffHook
+	del triple // (oldIndex, oldLen, newIndex)
+	ins triple // (oldIndex, newIndex, newLen)
+	eq  triple // (oldIndex, newIndex, len)
+}
+
+// NewReplaceHook wraps an inner hook.
+func NewReplaceHook(d DiffHook) *ReplaceHook {
+	return &ReplaceHook{d: d}
+}
+
+// Inner returns the wrapped hook.
+func (r *ReplaceHook) Inner() DiffHook { return r.d }
+
+func (r *ReplaceHook) flushEq() error {
+	if r.eq.ok {
+		eq := r.eq
+		r.eq = triple{}
+		return r.d.Equal(eq.a, eq.b, eq.c)
+	}
+	return nil
+}
+
+func (r *ReplaceHook) flushDelIns() error {
+	if r.del.ok {
+		del := r.del
+		r.del = triple{}
+		if r.ins.ok {
+			ins := r.ins
+			r.ins = triple{}
+			return r.d.Replace(del.a, del.b, ins.b, ins.c)
+		}
+		return r.d.Delete(del.a, del.b, del.c)
+	}
+	if r.ins.ok {
+		ins := r.ins
+		r.ins = triple{}
+		return r.d.Insert(ins.a, ins.b, ins.c)
+	}
+	return nil
+}
+
+func (r *ReplaceHook) Equal(oldIndex, newIndex, length int) error {
+	if err := r.flushDelIns(); err != nil {
+		return err
+	}
+	if r.eq.ok {
+		r.eq.c += length
+	} else {
+		r.eq = triple{a: oldIndex, b: newIndex, c: length, ok: true}
+	}
+	return nil
+}
+
+func (r *ReplaceHook) Delete(oldIndex, oldLen, newIndex int) error {
+	if err := r.flushEq(); err != nil {
+		return err
+	}
+	if r.del.ok {
+		r.del.b += oldLen
+	} else {
+		r.del = triple{a: oldIndex, b: oldLen, c: newIndex, ok: true}
+	}
+	return nil
+}
+
+func (r *ReplaceHook) Insert(oldIndex, newIndex, newLen int) error {
+	if err := r.flushEq(); err != nil {
+		return err
+	}
+	if r.ins.ok {
+		r.ins.c += newLen
+	} else {
+		r.ins = triple{a: oldIndex, b: newIndex, c: newLen, ok: true}
+	}
+	return nil
+}
+
+func (r *ReplaceHook) Replace(oldIndex, oldLen, newIndex, newLen int) error {
+	if err := r.flushEq(); err != nil {
+		return err
+	}
+	return r.d.Replace(oldIndex, oldLen, newIndex, newLen)
+}
+
+func (r *ReplaceHook) Finish() error {
+	if err := r.flushEq(); err != nil {
+		return err
+	}
+	if err := r.flushDelIns(); err != nil {
+		return err
+	}
+	return r.d.Finish()
+}
+
+var _ DiffHook = (*ReplaceHook)(nil)
+
 // compact is a DiffHook that performs semantic cleanup on a diff before
 // forwarding it to an inner hook. It records equal/delete/insert operations,
 // then on Finish shifts and merges adjacent hunks to connect as many changes
