@@ -6,7 +6,7 @@ import "github.com/mahibulhaque/similar/internal/diffutil"
 // DiffHook interface and its NoopHook base, then the three implementations the
 // standard stack is built from — Capture accumulates, ReplaceHook coalesces an
 // adjacent delete+insert into a Replace, and compact cleans the script up
-// semantically. engine.go is what assembles them.
+// semantically. similar.go is what assembles them.
 
 // DiffHook reacts to an edit script from the old version to the new version.
 //
