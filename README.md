@@ -175,7 +175,3 @@ make lint   # golangci-lint
 make fuzz   # native fuzzing against the invariants
 make ci     # test + lint + golden check
 ```
-
-## License
-
-Behavior ported from the `similar` crate (Apache-2.0).
