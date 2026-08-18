@@ -1,0 +1,15 @@
+[
+  {
+    "tag": "equal",
+    "old_index": 0,
+    "new_index": 0,
+    "old_len": 1,
+    "new_len": 1
+  },
+  {
+    "tag": "insert",
+    "old_index": 1,
+    "new_index": 1,
+    "new_len": 2
+  }
+]

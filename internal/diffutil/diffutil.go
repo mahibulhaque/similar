@@ -55,3 +55,17 @@ func SatMul(a, b int) int {
 	}
 	return r
 }
+
+func UniqueElements[T comparable](s []T, start, end int) (elements []T, indices []int) {
+	counts := make(map[T]int, end-start)
+	for i := start; i < end; i++ {
+		counts[s[i]]++
+	}
+	for i := start; i < end; i++ {
+		if counts[s[i]] == 1 {
+			elements = append(elements, s[i])
+			indices = append(indices, i)
+		}
+	}
+	return elements, indices
+}

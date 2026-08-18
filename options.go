@@ -67,16 +67,9 @@ func resolve(opts []Option) config {
 type Algorithm int
 
 const (
-	// Myers is Eugene W. Myers' shortest-edit-script algorithm. It is the
-	// default, and the one to use on large inputs: its cost scales with the
-	// number of differences rather than with the size of the input.
 	Myers Algorithm = iota
-	// LCS is the classic longest-common-subsequence table algorithm. It is
-	// O(N*M) in both time and space, so it suits small inputs and comparisons
-	// against other difflib-style implementations; past a few thousand tokens a
-	// side it stops building the table and approximates the changed middle as
-	// one replacement.
 	LCS
+	Patience
 )
 
 // String returns the algorithm's name.
@@ -86,6 +79,8 @@ func (a Algorithm) String() string {
 		return "myers"
 	case LCS:
 		return "lcs"
+	case Patience:
+		return "patience"
 	default:
 		return fmt.Sprintf("Algorithm(%d)", int(a))
 	}
@@ -100,7 +95,7 @@ func (a Algorithm) String() string {
 // nothing to check that WithAlgorithm does not check for them.
 func (a Algorithm) valid() bool {
 	switch a {
-	case Myers, LCS:
+	case Myers, LCS, Patience:
 		return true
 	default:
 		return false

@@ -403,7 +403,7 @@ func TestGetCloseMatchesEmpty(t *testing.T) {
 func TestQuickSeqRatioRepeatedCalls(t *testing.T) {
 	q := newQuickSeqRatio(tokenizeChars("apple"))
 	first := q.calc(tokenizeChars("apple"))
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if got := q.calc(tokenizeChars("apple")); got != first {
 			t.Fatalf("call %d = %v, want %v (scratch map leaked between calls)", i+2, got, first)
 		}

@@ -362,7 +362,7 @@ func TestCaptureRatioMatchesTheStandardStack(t *testing.T) {
 
 	for _, alphabet := range alphabets {
 		for _, size := range []int{0, 1, 2, 7, 40, 200} {
-			for i := 0; i < 120; i++ {
+			for range 120 {
 				mk := func() []string {
 					n := r.Intn(size + 1)
 					s := make([]string, n)

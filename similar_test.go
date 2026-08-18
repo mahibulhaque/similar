@@ -296,6 +296,7 @@ func TestGolden(t *testing.T) {
 	}{
 		{similar.Myers, ""},
 		{similar.LCS, "lcs_"},
+		{similar.Patience, "patience_"},
 	}
 	for _, alg := range algorithms {
 		for _, fx := range fixtures {

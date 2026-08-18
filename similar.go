@@ -1,16 +1,5 @@
 package similar
 
-// This file is the package's entry surface for diffing sequences: one function
-// per return type. Diff collects operations into a slice; DiffTo streams them
-// to a hook; DiffRangeTo does the same over a window with absolute indices.
-// Everything that varies without changing the return type — the context and the
-// algorithm — is an Option, shared with the text layer in options.go.
-//
-// It also holds the dispatch those three share: run maps an Algorithm value to
-// an implementation, and captureOps states once that materializing a diff means
-// Compact(Replace(Capture)). The text layer's build in text.go goes through it
-// too, so adding an algorithm edits one switch.
-
 import (
 	"context"
 	"fmt"
@@ -78,6 +67,8 @@ func run[T comparable](
 		return algorithms.DiffMyersDeadline(ctx, hook, old, oldStart, oldEnd, new, newStart, newEnd)
 	case LCS:
 		return algorithms.DiffLCSDeadline(ctx, hook, old, oldStart, oldEnd, new, newStart, newEnd)
+	case Patience:
+		return algorithms.DiffPatienceDeadline(ctx, hook, old, oldStart, oldEnd, new, newStart, newEnd)
 	default:
 		panic(fmt.Sprintf("similar: unknown algorithm %d", int(alg)))
 	}
